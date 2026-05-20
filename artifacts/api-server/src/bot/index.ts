@@ -33,7 +33,7 @@ import {
   startDocAddFlow, startDocTagsFlow, startDocPurgeFlow,
 } from "./handlers/documents.js";
 // BI handlers all migrated to routes/bi.ts (lazy-imported there).
-import { runMemberSearch, showMemberList } from "./handlers/members.js";
+import { runMemberSearch, showMemberList, showUserCard } from "./handlers/members.js";
 import {
   showAuditLog, showReminderPolicy, handleReminderEdit,
   showExportPanel, handleExport, showTagSystem, showBackupPanel,
@@ -299,6 +299,47 @@ async function routeCallback(ctx: any, data: string, role: Role, telegramId: str
     const off = parseInt(parts[3] || "0", 10);
     await ctx.answerCbQuery();
     await showMemberList(ctx, filter, isNaN(off) ? 0 : Math.max(0, off));
+    return;
+  }
+
+
+  // Member module hard routes.
+  // Keep specific routes before MEM catch-all, otherwise buttons will loop back.
+
+  if (data.startsWith("MEM:USER:")) {
+    if (!canExecuteAction(role, "MEM:USER")) {
+      await ctx.answerCbQuery("⛔ 你没有权限查看成员详情", { show_alert: true });
+      return;
+    }
+
+    const userId = Number(parts[2]);
+    if (!Number.isInteger(userId) || userId <= 0) {
+      await ctx.answerCbQuery("⚠️ 成员 ID 异常", { show_alert: true });
+      return;
+    }
+
+    const actor = await getUserByTelegramId(telegramId);
+    if (!actor) {
+      await ctx.answerCbQuery("❌ 当前用户不存在，请重新发送 /menu", { show_alert: true });
+      return;
+    }
+
+    await ctx.answerCbQuery();
+    await showUserCard(ctx, userId, actor);
+    return;
+  }
+
+  if (data === "MEM:LIST" || data.startsWith("MEM:LIST:")) {
+    if (!canExecuteAction(role, "MEM:LIST")) {
+      await ctx.answerCbQuery("⛔ 你没有权限查看成员列表", { show_alert: true });
+      return;
+    }
+
+    const filter = parts[2] || "ALL";
+    const off = Number.parseInt(parts[3] || "0", 10);
+
+    await ctx.answerCbQuery();
+    await showMemberList(ctx, filter, Number.isNaN(off) ? 0 : Math.max(0, off));
     return;
   }
 
