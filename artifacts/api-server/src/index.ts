@@ -165,8 +165,8 @@ async function startBot(bot: Telegraf, webhook: WebhookConfig | null): Promise<v
     },
     "Telegram bot started (webhook mode)",
   );
-    void startScheduler(bot);
-  });
+
+  void startScheduler(bot);
 }
 
 function stopServer(server: Server, signal: "SIGINT" | "SIGTERM"): void {
