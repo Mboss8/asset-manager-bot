@@ -1,7 +1,7 @@
 import type { Context } from "telegraf";
 import { editOrSend, buildKeyboard } from "./helpers.js";
 import type { Role } from "./permissions.js";
-import { canAccess } from "./permissions.js";
+import { canAccess, canExecuteAction } from "./permissions.js";
 
 interface MenuButton {
   text: string;
@@ -9,16 +9,22 @@ interface MenuButton {
   visible_roles: string;
 }
 
+function actionKeyForCallback(callbackData: string): string {
+  const parts = callbackData.split(":");
+  if (parts[0] === "M") return `M:${parts[1]}`;
+  return `${parts[0]}:${parts[1]}`;
+}
+
 const ALL_MENUS: Record<string, { title: string; description: string; buttons: MenuButton[]; footer: { text: string; callback_data: string }[] }> = {
   "M:HOME": {
     title: "📌 内部协作控制台",
     description: "让任务有闭环，让项目有节奏，让资金有轨迹。",
     buttons: [
-      { text: "📁 项目管理", callback_data: "M:PROJ", visible_roles: "ALL_USERS" },
-      { text: "✅ 任务中心", callback_data: "M:TASK", visible_roles: "ALL_USERS" },
-      { text: "📌 需求池", callback_data: "M:REQ", visible_roles: "ALL_USERS" },
-      { text: "📚 文档沉淀", callback_data: "M:DOC", visible_roles: "ALL_USERS" },
-      { text: "💰 资金动向", callback_data: "M:FIN", visible_roles: "FINANCE_OR_ADMIN" },
+      { text: "📁 项目管理", callback_data: "M:PROJ", visible_roles: "MEMBER_OR_ABOVE" },
+      { text: "✅ 任务中心", callback_data: "M:TASK", visible_roles: "MEMBER_OR_ABOVE" },
+      { text: "📌 需求池", callback_data: "M:REQ", visible_roles: "MEMBER_OR_ABOVE" },
+      { text: "📚 文档沉淀", callback_data: "M:DOC", visible_roles: "MEMBER_OR_ABOVE" },
+      { text: "💰 资金动向", callback_data: "M:FIN", visible_roles: "MEMBER_OR_ABOVE" },
       { text: "📊 数据看板", callback_data: "M:BI", visible_roles: "ALL_USERS" },
       { text: "👥 成员/权限", callback_data: "M:MEM", visible_roles: "ADMIN_ONLY" },
       { text: "⚙️ 系统设置", callback_data: "M:SET", visible_roles: "ADMIN_ONLY" },
@@ -30,9 +36,9 @@ const ALL_MENUS: Record<string, { title: string; description: string; buttons: M
     description: "以里程碑驱动进度，以指标锁定交付。",
     buttons: [
       { text: "➕ 新建项目", callback_data: "PROJ:NEW", visible_roles: "PM_OR_ADMIN" },
-      { text: "📋 项目列表", callback_data: "PROJ:LIST", visible_roles: "ALL_USERS" },
+      { text: "📋 项目列表", callback_data: "PROJ:LIST", visible_roles: "MEMBER_OR_ABOVE" },
       { text: "🎯 里程碑管理", callback_data: "PROJ:MILE", visible_roles: "PM_OR_ADMIN" },
-      { text: "⚠️ 风险/阻塞登记", callback_data: "PROJ:RISK", visible_roles: "ALL_USERS" },
+      { text: "⚠️ 风险/阻塞登记", callback_data: "PROJ:RISK", visible_roles: "MEMBER_OR_ABOVE" },
       { text: "📌 项目周报生成", callback_data: "PROJ:REPORT", visible_roles: "PM_OR_ADMIN" },
     ],
     footer: [{ text: "🔙 返回主页", callback_data: "M:HOME" }],
@@ -41,10 +47,10 @@ const ALL_MENUS: Record<string, { title: string; description: string; buttons: M
     title: "✅ 任务中心",
     description: "把讨论变成行动，把行动变成结果。",
     buttons: [
-      { text: "➕ 新建任务", callback_data: "TASK:NEW", visible_roles: "ALL_USERS" },
-      { text: "👤 我的任务", callback_data: "TASK:MY", visible_roles: "ALL_USERS" },
-      { text: "📌 今日待办", callback_data: "TASK:TODAY", visible_roles: "ALL_USERS" },
-      { text: "⏳ 即将到期", callback_data: "TASK:DUESOON", visible_roles: "ALL_USERS" },
+      { text: "➕ 新建任务", callback_data: "TASK:NEW", visible_roles: "MEMBER_OR_ABOVE" },
+      { text: "👤 我的任务", callback_data: "TASK:MY", visible_roles: "MEMBER_OR_ABOVE" },
+      { text: "📌 今日待办", callback_data: "TASK:TODAY", visible_roles: "MEMBER_OR_ABOVE" },
+      { text: "⏳ 即将到期", callback_data: "TASK:DUESOON", visible_roles: "MEMBER_OR_ABOVE" },
       { text: "🚨 超期任务", callback_data: "TASK:OVERDUE", visible_roles: "PM_OR_ADMIN" },
       { text: "📂 已归档任务", callback_data: "TASK:ARCH", visible_roles: "PM_OR_ADMIN" },
     ],
@@ -54,9 +60,9 @@ const ALL_MENUS: Record<string, { title: string; description: string; buttons: M
     title: "📌 需求池",
     description: "需求必须有编号、有结论、有归宿。",
     buttons: [
-      { text: "➕ 发布需求", callback_data: "REQ:NEW", visible_roles: "ALL_USERS" },
+      { text: "➕ 发布需求", callback_data: "REQ:NEW", visible_roles: "MEMBER_OR_ABOVE" },
       { text: "📥 待评审需求", callback_data: "REQ:PENDING", visible_roles: "PM_OR_ADMIN" },
-      { text: "🚀 已立项需求", callback_data: "REQ:APPROVED", visible_roles: "ALL_USERS" },
+      { text: "🚀 已立项需求", callback_data: "REQ:APPROVED", visible_roles: "MEMBER_OR_ABOVE" },
       { text: "❌ 已驳回需求", callback_data: "REQ:REJECTED", visible_roles: "PM_OR_ADMIN" },
       { text: "🧾 需求统计", callback_data: "REQ:STATS", visible_roles: "PM_OR_ADMIN" },
     ],
@@ -66,14 +72,14 @@ const ALL_MENUS: Record<string, { title: string; description: string; buttons: M
     title: "📚 文档沉淀",
     description: "把经验固化为资产，把知识沉淀为壁垒。",
     buttons: [
-      { text: "➕ 上传文档", callback_data: "DOC:ADD", visible_roles: "ALL_USERS" },
-      { text: "📋 全部文档", callback_data: "DOC:LIST:ALL:0", visible_roles: "ALL_USERS" },
-      { text: "📌 置顶文档", callback_data: "DOC:LIST:PINNED:0", visible_roles: "ALL_USERS" },
-      { text: "👤 我上传的", callback_data: "DOC:LIST:MINE:0", visible_roles: "ALL_USERS" },
-      { text: "📂 分类目录", callback_data: "DOC:CATE", visible_roles: "ALL_USERS" },
-      { text: "📁 按项目浏览", callback_data: "DOC:LINKPROJ:0", visible_roles: "ALL_USERS" },
-      { text: "📝 会议纪要", callback_data: "DOC:MINUTES", visible_roles: "ALL_USERS" },
-      { text: "🔍 搜索文档", callback_data: "DOC:SEARCH", visible_roles: "ALL_USERS" },
+      { text: "➕ 上传文档", callback_data: "DOC:ADD", visible_roles: "MEMBER_OR_ABOVE" },
+      { text: "📋 全部文档", callback_data: "DOC:LIST:ALL:0", visible_roles: "MEMBER_OR_ABOVE" },
+      { text: "📌 置顶文档", callback_data: "DOC:LIST:PINNED:0", visible_roles: "MEMBER_OR_ABOVE" },
+      { text: "👤 我上传的", callback_data: "DOC:LIST:MINE:0", visible_roles: "MEMBER_OR_ABOVE" },
+      { text: "📂 分类目录", callback_data: "DOC:CATE", visible_roles: "MEMBER_OR_ABOVE" },
+      { text: "📁 按项目浏览", callback_data: "DOC:LINKPROJ:0", visible_roles: "MEMBER_OR_ABOVE" },
+      { text: "📝 会议纪要", callback_data: "DOC:MINUTES", visible_roles: "MEMBER_OR_ABOVE" },
+      { text: "🔍 搜索文档", callback_data: "DOC:SEARCH", visible_roles: "MEMBER_OR_ABOVE" },
       { text: "🗄 已归档", callback_data: "DOC:LIST:ARCH:0", visible_roles: "PM_OR_ADMIN" },
     ],
     footer: [{ text: "🔙 返回主页", callback_data: "M:HOME" }],
@@ -84,7 +90,7 @@ const ALL_MENUS: Record<string, { title: string; description: string; buttons: M
     buttons: [
       { text: "➕ 录入收入", callback_data: "FIN:IN", visible_roles: "FINANCE_OR_ADMIN" },
       { text: "➖ 录入支出", callback_data: "FIN:OUT", visible_roles: "FINANCE_OR_ADMIN" },
-      { text: "🧾 报销申请", callback_data: "FIN:REIMB", visible_roles: "ALL_USERS" },
+      { text: "🧾 报销申请", callback_data: "FIN:REIMB", visible_roles: "MEMBER_OR_ABOVE" },
       { text: "⏳ 待审核", callback_data: "FIN:APPROVALS", visible_roles: "FINANCE_OR_ADMIN" },
       { text: "📊 月度报表", callback_data: "FIN:MONTHLY", visible_roles: "FINANCE_OR_ADMIN" },
       { text: "📂 按项目统计", callback_data: "FIN:BYPROJ", visible_roles: "FINANCE_OR_ADMIN" },
@@ -173,7 +179,10 @@ export async function showMenu(ctx: Context, menuKey: string, role: Role): Promi
     .filter((b) => canAccess(role, b.visible_roles))
     .map((b) => ({ text: b.text, callback_data: b.callback_data }));
 
-  const keyboard = buildKeyboard(visibleButtons, 2, menu.footer);
+  const visibleFooter = menu.footer.filter((b) =>
+    canExecuteAction(role, actionKeyForCallback(b.callback_data)),
+  );
+  const keyboard = buildKeyboard(visibleButtons, 2, visibleFooter);
   const text = `<b>${menu.title}</b>\n<i>${menu.description}</i>`;
   await editOrSend(ctx, text, keyboard);
 }

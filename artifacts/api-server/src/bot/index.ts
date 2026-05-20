@@ -77,6 +77,29 @@ export function createBot(token: string): Telegraf {
     return user?.isBlacklisted === 1;
   }
 
+
+  // Global blacklist gate: one lock for every command, message and button.
+  // This keeps blacklisted users from bypassing module checks via old callbacks.
+  bot.use(async (ctx, next) => {
+    const telegramId = String(ctx.from?.id ?? "");
+    if (!telegramId) return next();
+
+    if (await isBlacklisted(telegramId)) {
+      try {
+        if (ctx.updateType === "callback_query") {
+          await ctx.answerCbQuery("🚫 你已被列入黑名单，无法使用此系统。", { show_alert: true });
+        } else if (ctx.chat?.type === "private") {
+          await ctx.reply("🚫 你已被列入黑名单，无法使用此系统。");
+        }
+      } catch (err) {
+        logger.warn({ err, telegramId }, "Failed to notify blacklisted user");
+      }
+      return;
+    }
+
+    return next();
+  });
+
   const HELP_TEXT = `🤖 <b>得力助手 命令说明</b>
 
 /menu - 打开主控面板（仅私聊）
