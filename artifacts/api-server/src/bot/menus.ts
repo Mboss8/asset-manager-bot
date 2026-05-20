@@ -111,7 +111,7 @@ const ALL_MENUS: Record<string, { title: string; description: string; buttons: M
     title: "👥 成员/权限",
     description: "用角色定义边界，用权限守住秩序。",
     buttons: [
-      { text: "👤 成员列表", callback_data: "MEM:LIST", visible_roles: "ADMIN_ONLY" },
+      { text: "👤 成员列表", callback_data: "MEM:LIST:ALL:0", visible_roles: "ADMIN_ONLY" },
       { text: "🧩 角色分配", callback_data: "MEM:ROLE", visible_roles: "ADMIN_ONLY" },
       { text: "🛡 权限策略", callback_data: "MEM:POLICY", visible_roles: "ADMIN_ONLY" },
       { text: "📌 黑名单/白名单", callback_data: "MEM:ACL", visible_roles: "ADMIN_ONLY" },
