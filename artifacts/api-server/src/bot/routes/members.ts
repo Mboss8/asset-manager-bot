@@ -23,9 +23,8 @@ async function loadActor(rctx: RouteCtx) {
   return actor;
 }
 
-async function fallbackToMenu({ ctx, role }: RouteCtx): Promise<void> {
-  const { showMenu } = await import("../menus.js");
-  await showMenu(ctx, "M:MEM", role);
+async function fallbackToMenu({ ctx }: RouteCtx): Promise<void> {
+  await ctx.answerCbQuery("⚠️ 按钮版本过旧，请返回成员菜单重新进入", { show_alert: true });
 }
 
 export const MEMBERS_ROUTES: Route[] = [
@@ -107,6 +106,40 @@ export const MEMBERS_ROUTES: Route[] = [
     },
   },
   {
+    pattern: "MEM:SET_ROLE:<id:int>:<newRole>",
+    acl: "MEM:SETROLE",
+    preAck: false,
+    handler: async (rctx) => {
+      const actor = await loadActor(rctx);
+      if (!actor) return;
+      const { handleMemberAction } = await import("../handlers/members.js");
+      await handleMemberAction(
+        rctx.ctx,
+        "SETROLE",
+        parseInt(rctx.args.id, 10),
+        rctx.args.newRole,
+        actor,
+      );
+    },
+  },
+  {
+    pattern: "MEM:BLACK:<id:int>",
+    acl: "MEM:BLACKLIST",
+    preAck: false,
+    handler: async (rctx) => {
+      const actor = await loadActor(rctx);
+      if (!actor) return;
+      const { handleMemberAction } = await import("../handlers/members.js");
+      await handleMemberAction(
+        rctx.ctx,
+        "BLACKLIST",
+        parseInt(rctx.args.id, 10),
+        undefined,
+        actor,
+      );
+    },
+  },
+  {
     pattern: "MEM:BLACKLIST:<id:int>",
     preAck: false,
     handler: async (rctx) => {
@@ -116,6 +149,23 @@ export const MEMBERS_ROUTES: Route[] = [
       await handleMemberAction(
         rctx.ctx,
         "BLACKLIST",
+        parseInt(rctx.args.id, 10),
+        undefined,
+        actor,
+      );
+    },
+  },
+  {
+    pattern: "MEM:WHITE:<id:int>",
+    acl: "MEM:UNBLACKLIST",
+    preAck: false,
+    handler: async (rctx) => {
+      const actor = await loadActor(rctx);
+      if (!actor) return;
+      const { handleMemberAction } = await import("../handlers/members.js");
+      await handleMemberAction(
+        rctx.ctx,
+        "UNBLACKLIST",
         parseInt(rctx.args.id, 10),
         undefined,
         actor,
