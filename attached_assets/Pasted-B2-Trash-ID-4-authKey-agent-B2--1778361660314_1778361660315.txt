@@ -1,0 +1,322 @@
+B2 的 Trash 回收站要完全融入现有协议：模块:动作:ID，最多 4 段，并且能推导 authKey。
+
+下面给你一套完全对齐你现有路由规范的方案（代码可直接给 agent 落地）。
+
+B2 回收站 callback 设计（符合你现有协议）
+callback_data 约定（4 段内）
+打开回收站菜单：M:TRASH
+打开某类回收站列表：TRASH:LIST:<TYPE>:<OFFSET>
+恢复：TRASH:RESTORE:<TYPE>:<ID>
+永久删除（可选）：TRASH:PURGE:<TYPE>:<ID>
+
+其中 <TYPE> 取值：
+
+TASK
+REQ
+FIN
+DOC
+PROJ
+
+OFFSET 是数字字符串（0/10/20...）
+
+1）新增 handler：artifacts/api-server/src/bot/handlers/trash.ts
+
+这份代码只依赖 drizzle/db/schema + soft-delete helper，不碰 session，不碰鉴权。
+
+// artifacts/api-server/src/bot/handlers/trash.ts
+import { and, desc, eq } from "drizzle-orm";
+import { db } from "@/db";
+import {
+  tasksTable,
+  requirementsTable,
+  financeRecordsTable,
+  documentsTable,
+  projectsTable,
+} from "@/db/schema";
+
+import { onlyDeleted } from "@/db/soft-delete";
+
+const PAGE_SIZE = 10;
+
+export type TrashType = "TASK" | "REQ" | "FIN" | "DOC" | "PROJ";
+
+function getTable(type: TrashType) {
+  switch (type) {
+    case "TASK":
+      return tasksTable;
+    case "REQ":
+      return requirementsTable;
+    case "FIN":
+      return financeRecordsTable;
+    case "DOC":
+      return documentsTable;
+    case "PROJ":
+      return projectsTable;
+  }
+}
+
+function typeLabel(type: TrashType) {
+  switch (type) {
+    case "TASK":
+      return "任务";
+    case "REQ":
+      return "需求";
+    case "FIN":
+      return "财务";
+    case "DOC":
+      return "文档";
+    case "PROJ":
+      return "项目";
+  }
+}
+
+function fmtDate(d: Date | null) {
+  if (!d) return "-";
+  return d.toISOString().slice(0, 10);
+}
+
+function getRowTitle(row: any) {
+  return row.title || row.name || row.serialNo || `#${row.id}`;
+}
+
+async function fetchTrashRows(type: TrashType, offset: number) {
+  const table: any = getTable(type);
+
+  return db
+    .select()
+    .from(table)
+    .where(onlyDeleted(table))
+    .orderBy(desc(table.deletedAt))
+    .limit(PAGE_SIZE)
+    .offset(offset);
+}
+
+async function restoreTrashRow(type: TrashType, id: number) {
+  const table: any = getTable(type);
+
+  const rows = await db
+    .update(table)
+    .set({ deletedAt: null })
+    .where(and(eq(table.id, id), onlyDeleted(table)))
+    .returning();
+
+  return rows[0] ?? null;
+}
+
+// 默认不开放 purge（避免误删），但接口留着
+async function purgeTrashRow(type: TrashType, id: number) {
+  const table: any = getTable(type);
+  await db.delete(table).where(eq(table.id, id));
+}
+
+function buildTrashMenuKeyboard() {
+  return {
+    inline_keyboard: [
+      [{ text: "🗑 任务", callback_data: "TRASH:LIST:TASK:0" }],
+      [{ text: "🗑 需求", callback_data: "TRASH:LIST:REQ:0" }],
+      [{ text: "🗑 财务", callback_data: "TRASH:LIST:FIN:0" }],
+      [{ text: "🗑 文档", callback_data: "TRASH:LIST:DOC:0" }],
+      [{ text: "🗑 项目", callback_data: "TRASH:LIST:PROJ:0" }],
+      [{ text: "🏠 返回首页", callback_data: "M:HOME" }],
+    ],
+  };
+}
+
+function buildTrashListKeyboard(type: TrashType, offset: number, rows: any[]) {
+  const buttons: any[] = [];
+
+  for (const r of rows) {
+    buttons.push([
+      {
+        text: `♻️ 恢复 #${r.id}`,
+        callback_data: `TRASH:RESTORE:${type}:${r.id}`,
+      },
+      // purge 暂不启用（后续 B2.5 或 B3）
+      // { text: `☠️ 清除`, callback_data: `TRASH:PURGE:${type}:${r.id}` },
+    ]);
+  }
+
+  const prevOffset = Math.max(0, offset - PAGE_SIZE);
+  const nextOffset = offset + PAGE_SIZE;
+
+  buttons.push([
+    { text: "⬅️ 上一页", callback_data: `TRASH:LIST:${type}:${prevOffset}` },
+    { text: "➡️ 下一页", callback_data: `TRASH:LIST:${type}:${nextOffset}` },
+  ]);
+
+  buttons.push([{ text: "🔙 返回类型选择", callback_data: "M:TRASH" }]);
+
+  return { inline_keyboard: buttons };
+}
+
+function buildTrashListText(type: TrashType, offset: number, rows: any[]) {
+  const header = `🗑 回收站 / ${typeLabel(type)}\nOffset: ${offset}\n`;
+
+  if (!rows.length) {
+    return header + "\n（空）";
+  }
+
+  const body = rows
+    .map((r) => {
+      return `• #${r.id} | ${getRowTitle(r)} | deleted: ${fmtDate(r.deletedAt)}`;
+    })
+    .join("\n");
+
+  return header + "\n" + body;
+}
+
+/**
+ * M:TRASH 入口（菜单）
+ */
+export async function showTrashMenu(ctx: any) {
+  await ctx.answerCbQuery();
+  await ctx.editMessageText("🗑 回收站\n请选择要查看的类型：", {
+    reply_markup: buildTrashMenuKeyboard(),
+  });
+}
+
+/**
+ * TRASH:LIST:<TYPE>:<OFFSET>
+ */
+export async function showTrashList(ctx: any, type: TrashType, offset: number) {
+  const rows = await fetchTrashRows(type, offset);
+  const text = buildTrashListText(type, offset, rows);
+
+  await ctx.answerCbQuery();
+  await ctx.editMessageText(text, {
+    reply_markup: buildTrashListKeyboard(type, offset, rows),
+  });
+}
+
+/**
+ * TRASH:RESTORE:<TYPE>:<ID>
+ */
+export async function handleTrashRestore(ctx: any, type: TrashType, id: number) {
+  await restoreTrashRow(type, id);
+
+  await ctx.answerCbQuery("♻️ 已恢复", { show_alert: false });
+
+  // 恢复后默认回到第一页
+  const rows = await fetchTrashRows(type, 0);
+  const text = buildTrashListText(type, 0, rows);
+
+  await ctx.editMessageText(text, {
+    reply_markup: buildTrashListKeyboard(type, 0, rows),
+  });
+}
+
+/**
+ * TRASH:PURGE:<TYPE>:<ID>（默认不接入，除非你要开放）
+ */
+export async function handleTrashPurge(ctx: any, type: TrashType, id: number) {
+  await purgeTrashRow(type, id);
+
+  await ctx.answerCbQuery("☠️ 已永久删除", { show_alert: true });
+
+  const rows = await fetchTrashRows(type, 0);
+  const text = buildTrashListText(type, 0, rows);
+
+  await ctx.editMessageText(text, {
+    reply_markup: buildTrashListKeyboard(type, 0, rows),
+  });
+}
+2）路由接入点（index.ts routeCallback 里加分支）
+
+在 routeCallback() 里，parts = data.split(":") 之后，加入这段：
+
+// index.ts routeCallback 内
+import {
+  showTrashMenu,
+  showTrashList,
+  handleTrashRestore,
+  handleTrashPurge,
+} from "@/bot/handlers/trash";
+
+然后在分发逻辑里加：
+
+if (data === "M:TRASH") {
+  if (!canExecuteAction(role, "M:SET")) {
+    await ctx.answerCbQuery("⛔ 你没有权限访问回收站", { show_alert: true });
+    return;
+  }
+  await showTrashMenu(ctx);
+  return;
+}
+
+if (parts[0] === "TRASH") {
+  // authKey 建议归类为 M:SET（管理功能）
+  if (!canExecuteAction(role, "M:SET")) {
+    await ctx.answerCbQuery("⛔ 你没有权限访问回收站", { show_alert: true });
+    return;
+  }
+
+  const action = parts[1];
+
+  if (action === "LIST") {
+    const type = parts[2] as any;
+    const offset = parseInt(parts[3] ?? "0", 10);
+    await showTrashList(ctx, type, isNaN(offset) ? 0 : Math.max(0, offset));
+    return;
+  }
+
+  if (action === "RESTORE") {
+    const type = parts[2] as any;
+    const id = parseInt(parts[3] ?? "0", 10);
+    if (!id) {
+      await ctx.answerCbQuery("❌ 参数错误", { show_alert: true });
+      return;
+    }
+    await handleTrashRestore(ctx, type, id);
+    return;
+  }
+
+  if (action === "PURGE") {
+    // 默认不开放 purge，除非你决定启用
+    await ctx.answerCbQuery("⛔ 暂不支持永久删除", { show_alert: true });
+    return;
+
+    // 如果要启用 purge，则改成：
+    // const type = parts[2] as any;
+    // const id = parseInt(parts[3] ?? "0", 10);
+    // await handleTrashPurge(ctx, type, id);
+    // return;
+  }
+
+  await ctx.answerCbQuery("❌ 未知回收站操作", { show_alert: true });
+  return;
+}
+3）鉴权 key 怎么办？（最优建议）
+
+你们的 authKey 推导逻辑目前是：
+
+M:* 才会生成 authKey
+其他模块未列入白名单默认放行
+
+为了不改现有 auth 推导，最稳的方式就是：
+
+回收站入口用 M:TRASH
+回收站动作 TRASH:* 在 routeCallback 内部直接走 canExecuteAction(role, "M:SET")
+
+这样不会污染现有 mapping。
+
+4）菜单入口怎么挂？
+
+在 showMenu() 的 Settings 菜单里加一个按钮：
+
+文案：🗑 回收站
+callback_data：M:TRASH
+
+这符合你现有 menu 体系。
+
+5）B2 接下来要做的“删除动作改软删”
+
+回收站能看见 deleted 的前提是：你得把 delete action 从 db.delete 改成 deletedAt=now()。
+
+但这部分我建议你拆成 B2.1：
+
+先接入回收站 UI（只读 deleted 数据）
+再逐模块替换 delete action 为软删
+
+这样回归风险最小。
+
+如果你愿意，我可以直接给你下一步的**“删除动作软删替换清单”模板**（像 B1 一样按文件列出所有 DEL/REMOVE/ARCH 入口应该怎么改）。

@@ -1,0 +1,171 @@
+这一步已经不是“重构”，而是把系统从 if-else orchestration 推进到 policy-driven routing mesh 了，你现在这个 Phase 的设计方向是对的，而且已经开始收敛成企业级结构。
+
+我帮你做一个审计级确认 + 下一步战术边界划线，确保不会越改越飘。
+
+🧭 当前架构状态（已确认成立）
+
+你现在系统已经分三层清晰分离：
+
+① Flow Layer（业务编排层）✔ 已完成
+FlowDef {
+  acl?: string
+  steps: ...
+}
+
+✔ submitForm → 统一 ACL gate
+✔ session stale 防护已统一收口
+✔ flow 不再做权限判断（这是关键胜利点）
+
+👉 这一层现在是“可测试状态机”，干净
+
+② Routing Layer（正在 Phase 2）🔥 进行中
+Route {
+  pattern: "GROUPS:SETDEFCH:<id>"
+  acl: "GROUPS:SETDEFCH"
+  handler
+  preflight?
+}
+
+✔ GROUPS 已经成为“样板模块”
+✔ index.ts switch 已经开始被剥离
+⚠️ 其余模块仍是 legacy switch（技术债池）
+
+③ Permission Layer（稳定不动）✔
+ACTION_PERMISSIONS: Record<string, Role>
+
+✔ 已经是 declarative ACL map
+✔ fail-open 已被 Phase 2 LOW 修复压住风险
+
+⚠️ 当前真正风险点（必须盯住）
+
+不是结构问题，是这三个：
+
+R1 — “双 ACL 系统短期共存”
+
+现在存在：
+
+Flow.acl（Phase 1）
+Route.acl（Phase 2）
+
+👉 风险：权限语义可能分裂
+
+必须保证一条原则：
+
+Flow ACL = entry guard
+Route ACL = execution guard
+永不重复定义同一权限语义
+
+否则会出现：
+
+flow 允许
+route 拒绝
+或反过来 ghost allow
+R2 — router-table vs legacy switch 并存期
+
+现在是混合态：
+
+index.ts
+  → ROUTE_TABLE (new)
+  → switch(module) (old)
+
+⚠️ 最大风险不是 bug，而是：
+
+新功能走新路由，旧功能仍在增长 switch
+
+👉 这会造成“双体系膨胀”
+
+必须设一个硬指标：
+
+switch 行数每轮必须递减（不是稳定）
+
+R3 — preflight 逻辑分散
+
+你现在：
+
+GROUPS 用 preflight
+FLOW 用 acl
+ROUTE 用 handler guard
+
+⚠️ 如果不收敛，会变成：
+
+3 个地方都在做“权限前置判断”
+
+建议未来 Phase 3 统一成：
+
+guard: {
+  acl: string
+  preflight?: fn
+  validate?: fn
+}
+🧠 对你当前 Phase 2 的评价（关键结论）
+
+你现在的设计不是“重构”，而是：
+
+🔵 从 procedural dispatch → declarative routing DSL
+
+这是企业级 Bot / Workflow Engine 的典型演进路径。
+
+🚀 我建议你现在的“收敛策略”（非常关键）
+
+不要继续扩大 Phase 2，而是锁死边界：
+
+✅ Phase 2 MUST DO（你现在做的是对的）
+GROUPS 完整迁移（样板）
+router-table 成型
+index.ts switch 开始下降
+❌ Phase 2 MUST NOT DO（防止失控）
+不要动 TASK / PROJ / FIN
+不要继续扩 FLOW 体系
+不要再引入第三种 routing abstraction
+🎯 下一阶段真正的“临界点”（很重要）
+
+当你满足：
+
+switch(module) < 200 lines
+AND
+ROUTE_TABLE coverage > 60%
+
+👉 才进入 Phase 3（全模块迁移）
+
+否则就是“半抽象地狱”
+
+🧩 给你一个架构级建议（前瞻性）
+
+你现在其实已经在做一件更大的事：
+
+Telegram Bot → Internal Workflow Engine
+
+如果继续演进，下一步不是 routing，而是：
+
+🧱 Event Bus 化
+emit("GROUP.SETDEFCH", payload)
+
+routing-table 变成：
+
+event → handler registry
+
+但这一步要等 Phase 2 完全稳定，否则会过早复杂化。
+
+✔ 最终结论（给你拍板用）
+
+你现在路径是正确的，而且已经进入：
+
+🟢 “可扩展架构形成期（not refactor phase anymore）”
+
+但必须守住三条纪律：
+
+Flow ACL 和 Route ACL 不重复职责
+switch 必须持续收缩（不是并存）
+Phase 2 只做 GROUPS 样板，不扩散
+
+如果你下一步愿意，我可以帮你做一件更关键的事：
+
+把 ROUTE_TABLE 升级成 可类型推导的 DSL（TS 强约束版）
+
+让你以后加模块是：
+
+route.add("TASK:CREATE", handler)
+
+而不是手写 pattern。
+
+那一步，会让这个系统真正“进入框架级别”。

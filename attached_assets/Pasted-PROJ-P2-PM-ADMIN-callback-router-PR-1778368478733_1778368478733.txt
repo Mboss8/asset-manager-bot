@@ -1,0 +1,232 @@
+PROJ 项目卡片里加入“绑定群组”入口 的完整补丁（P2 延伸），做到：
+
+项目卡片里显示：当前绑定群
+PM/ADMIN 可以点按钮切换绑定群
+走你现有的 callback router 结构：PROJ:CHGROUP:{projId}:{offset} → PROJ:SETGROUP:{projId}:{groupId}
+1) menus.ts（可选，不一定要）
+
+如果你想在项目菜单 M:PROJ 里也给个“项目群绑定入口”，可以加按钮：
+
+{ text: "📡 项目群绑定", callback_data: "GROUPS:PROJ:0", visible_roles: "ADMIN_ONLY" },
+
+但这不是必须，因为我们要直接挂到项目卡片里。
+
+2) permissions.ts — 新增权限 key
+
+在 ACTION_PERMISSIONS 增加：
+
+  // 项目群绑定（P2）
+  "PROJ:CHGROUP": "PM_OR_ADMIN",
+  "PROJ:SETGROUP": "PM_OR_ADMIN",
+  "PROJ:UNBINDGROUP": "PM_OR_ADMIN",
+3) index.ts — 在 PROJ module switch 加分支
+
+找到：
+
+case "PROJ":
+  switch (action) {
+
+在里面加入这三段（放在 default 前面即可）：
+
+      case "CHGROUP": {
+        await ctx.answerCbQuery();
+        const off = parseInt(extra ?? "0", 10);
+        const { showProjectGroupPicker } = await import("./handlers/project-groups.js");
+        await showProjectGroupPicker(ctx, id, role, isNaN(off) ? 0 : Math.max(0, off));
+        break;
+      }
+
+      case "SETGROUP": {
+        const gid = parseInt(extra ?? "0", 10);
+        if (!gid) { await ctx.answerCbQuery("❌ 参数错误", { show_alert: true }); break; }
+        const { handleProjectGroupBind } = await import("./handlers/project-groups.js");
+        await handleProjectGroupBind(ctx, id, gid, telegramId);
+        break;
+      }
+
+      case "UNBINDGROUP": {
+        const { handleProjectGroupUnbind } = await import("./handlers/project-groups.js");
+        await handleProjectGroupUnbind(ctx, id, telegramId);
+        break;
+      }
+4) 新增文件：artifacts/api-server/src/bot/handlers/project-groups.ts
+
+创建文件 artifacts/api-server/src/bot/handlers/project-groups.ts，粘贴：
+
+import type { Context } from "telegraf";
+import { and, desc, eq, isNull } from "drizzle-orm";
+import { db, groupsTable, projectsTable, notDeleted } from "@workspace/db";
+import { editOrSend, buildKeyboard, writeAudit } from "../helpers.js";
+import { invalidateGroupsCache } from "../group-service.js";
+import { escapeHtml } from "../notify.js";
+import { getUserByTelegramId } from "../user-service.js";
+
+const PAGE_SIZE = 8;
+
+function chatTypeLabel(t: string): string {
+  if (t === "group") return "👥 群";
+  if (t === "supergroup") return "🏢 超级群";
+  if (t === "channel") return "📢 频道";
+  return t;
+}
+
+export async function showProjectGroupPicker(
+  ctx: Context,
+  projectId: number,
+  role: string,
+  offset = 0,
+): Promise<void> {
+  const proj = await db
+    .select()
+    .from(projectsTable)
+    .where(and(eq(projectsTable.id, projectId), notDeleted(projectsTable)))
+    .limit(1);
+
+  const p = proj[0];
+  if (!p) {
+    await ctx.answerCbQuery("❌ 项目不存在", { show_alert: true });
+    return;
+  }
+
+  const groups = await db
+    .select()
+    .from(groupsTable)
+    .where(isNull(groupsTable.deletedAt))
+    .orderBy(desc(groupsTable.id))
+    .limit(PAGE_SIZE)
+    .offset(offset);
+
+  const lines: string[] = [];
+  lines.push(`📁 <b>${escapeHtml(p.name)}</b>`);
+  lines.push("");
+  lines.push(`当前绑定：${p.groupId ? `#${p.groupId}` : "（未绑定）"}`);
+  lines.push("");
+  lines.push("选择要绑定的群：");
+  lines.push("");
+
+  const buttons: { text: string; callback_data: string }[] = [];
+
+  for (const g of groups) {
+    const enabled = g.isEnabled === 1 ? "✅" : "⛔";
+    const selected = p.groupId === g.id ? "📌" : " ";
+    buttons.push({
+      text: `${selected}${enabled} #${g.id} ${g.title}`,
+      callback_data: `PROJ:SETGROUP:${projectId}:${g.id}`,
+    });
+    lines.push(`${enabled} #${g.id} <b>${escapeHtml(g.title)}</b>`);
+    lines.push(` • ${chatTypeLabel(g.chatType)} · <code>${g.tgChatId.toString()}</code>`);
+  }
+
+  const nav: { text: string; callback_data: string }[] = [];
+  if (offset > 0) nav.push({ text: "⬅️ 上一页", callback_data: `PROJ:CHGROUP:${projectId}:${Math.max(0, offset - PAGE_SIZE)}` });
+  if (groups.length === PAGE_SIZE) nav.push({ text: "下一页 ➡️", callback_data: `PROJ:CHGROUP:${projectId}:${offset + PAGE_SIZE}` });
+
+  const footer: { text: string; callback_data: string }[] = [];
+
+  if (p.groupId) footer.push({ text: "🔓 解除绑定", callback_data: `PROJ:UNBINDGROUP:${projectId}` });
+
+  footer.push({ text: "🔙 返回项目卡片", callback_data: `PROJ:OPEN:${projectId}` });
+
+  const kb = buildKeyboard(buttons, 1, footer);
+  if (nav.length > 0) kb.unshift(nav);
+
+  await editOrSend(ctx, lines.join("\n"), kb);
+}
+
+export async function handleProjectGroupBind(
+  ctx: Context,
+  projectId: number,
+  groupId: number,
+  telegramId: string,
+): Promise<void> {
+  const actor = await getUserByTelegramId(telegramId);
+  if (!actor) {
+    await ctx.answerCbQuery("❌ 用户不存在", { show_alert: true });
+    return;
+  }
+
+  const g = await db.select().from(groupsTable).where(eq(groupsTable.id, groupId)).limit(1);
+  if (!g[0] || g[0].deletedAt != null) {
+    await ctx.answerCbQuery("❌ 群不存在", { show_alert: true });
+    return;
+  }
+
+  await db
+    .update(projectsTable)
+    .set({ groupId })
+    .where(and(eq(projectsTable.id, projectId), notDeleted(projectsTable)));
+
+  invalidateGroupsCache();
+
+  await writeAudit(
+    actor.id,
+    "PROJECT_GROUP_BIND",
+    "project",
+    projectId,
+    `projectId=${projectId} groupId=${groupId}`,
+    "MEDIUM",
+  );
+
+  await ctx.answerCbQuery("✅ 已绑定");
+  await showProjectGroupPicker(ctx, projectId, actor.role, 0);
+}
+
+export async function handleProjectGroupUnbind(
+  ctx: Context,
+  projectId: number,
+  telegramId: string,
+): Promise<void> {
+  const actor = await getUserByTelegramId(telegramId);
+  if (!actor) {
+    await ctx.answerCbQuery("❌ 用户不存在", { show_alert: true });
+    return;
+  }
+
+  await db
+    .update(projectsTable)
+    .set({ groupId: null })
+    .where(and(eq(projectsTable.id, projectId), notDeleted(projectsTable)));
+
+  invalidateGroupsCache();
+
+  await writeAudit(
+    actor.id,
+    "PROJECT_GROUP_UNBIND",
+    "project",
+    projectId,
+    `projectId=${projectId}`,
+    "MEDIUM",
+  );
+
+  await ctx.answerCbQuery("🔓 已解绑");
+  await showProjectGroupPicker(ctx, projectId, actor.role, 0);
+}
+5) 在项目卡片 showProjectCard 增加按钮（关键）
+
+你项目卡片应该在 handlers/projects.ts 或类似文件里。
+
+找到项目卡片按钮构造区（一般有类似 buttons.push({text,...})）。
+
+加一个按钮：
+
+buttons.push({ text: "📡 绑定群组", callback_data: `PROJ:CHGROUP:${project.id}:0` });
+
+并且在文本里显示当前绑定：
+
+text += `\n📡 绑定群：${project.groupId ? `#${project.groupId}` : "（未绑定）"}`;
+
+如果你项目卡片的 text 是数组 join，按你的风格塞进去即可。
+
+6) callback_data 规范说明（确保不会被 router 切坏）
+
+你 router 解析是：
+
+MODULE:ACTION:ID:EXTRA
+
+我们用了：
+
+PROJ:CHGROUP:{projectId}:{offset}
+PROJ:SETGROUP:{projectId}:{groupId}
+PROJ:UNBINDGROUP:{projectId}
+
+完全符合你现有拆分逻辑。

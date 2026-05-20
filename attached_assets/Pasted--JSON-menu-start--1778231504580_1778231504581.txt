@@ -1,0 +1,4039 @@
+下面是完整的 菜单按钮树（可直接转 JSON / 数据表 / 配置文件），并附带路由命名规范，后续扩展不会乱。
+
+一、入口策略（唯一命令）
+入口命令（唯一）
+	•	/menu 或 /start
+返回：主控面板（Dashboard Card）
+
+二、主控面板（一级菜单）
+📌 内部协作控制台
+按钮
+callback_data
+📁 项目管理
+M:PROJ
+✅ 任务中心
+M:TASK
+📌 需求池
+M:REQ
+📚 文档沉淀
+M:DOC
+💰 资金动向
+M:FIN
+📊 数据看板
+M:BI
+👥 成员/权限
+M:MEM
+⚙️ 系统设置
+M:SET
+底部固定：
+	•	🔍 搜索 M:SEARCH
+	•	🔙 返回主页 M:HOME
+
+三、二级菜单（模块功能树）
+1）📁 项目管理 M:PROJ
+按钮
+callback_data
+➕ 新建项目
+PROJ:NEW
+📋 项目列表
+PROJ:LIST
+🎯 里程碑管理
+PROJ:MILE
+⚠️ 风险/阻塞登记
+PROJ:RISK
+📌 项目周报生成
+PROJ:REPORT
+🔙 返回
+M:HOME
+
+2）✅ 任务中心 M:TASK
+按钮
+callback_data
+➕ 新建任务
+TASK:NEW
+👤 我的任务
+TASK:MY
+📌 今日待办
+TASK:TODAY
+⏳ 即将到期
+TASK:DUESOON
+🚨 超期任务
+TASK:OVERDUE
+📂 已归档任务
+TASK:ARCH
+🔙 返回
+M:HOME
+
+3）📌 需求池 M:REQ
+按钮
+callback_data
+➕ 发布需求
+REQ:NEW
+📥 待评审需求
+REQ:PENDING
+🚀 已立项需求
+REQ:APPROVED
+❌ 已驳回需求
+REQ:REJECTED
+🧾 需求统计
+REQ:STATS
+🔙 返回
+M:HOME
+
+4）📚 文档沉淀 M:DOC
+按钮
+callback_data
+➕ 上传文档
+DOC:ADD
+📝 会议纪要
+DOC:MINUTES
+📂 分类目录
+DOC:CATE
+🔗 关联项目资料
+DOC:LINKPROJ
+🔍 搜索文档
+DOC:SEARCH
+🗄 已归档
+DOC:ARCH
+🔙 返回
+M:HOME
+
+5）💰 资金动向 M:FIN
+按钮
+callback_data
+➕ 录入收入
+FIN:IN
+➖ 录入支出
+FIN:OUT
+🧾 报销申请
+FIN:REIMB
+⏳ 待审核
+FIN:APPROVALS
+📊 月度报表
+FIN:MONTHLY
+📂 按项目统计
+FIN:BYPROJ
+🔙 返回
+M:HOME
+
+6）📊 数据看板 M:BI
+按钮
+callback_data
+📌 今日概览
+BI:DAILY
+📅 本周进度
+BI:WEEKLY
+⚠️ 风险预警
+BI:RISK
+💰 本月资金流
+BI:FIN
+🧾 自动生成周报
+BI:REPORT
+📢 推送到频道
+BI:PUSH
+🔙 返回
+M:HOME
+BI:PUSH 默认仅 Admin/Owner 可见。
+
+7）👥 成员/权限 M:MEM
+按钮
+callback_data
+👤 成员列表
+MEM:LIST
+🧩 角色分配
+MEM:ROLE
+🛡 权限策略
+MEM:POLICY
+📌 黑名单/白名单
+MEM:ACL
+🔙 返回
+M:HOME
+
+8）⚙️ 系统设置 M:SET
+按钮
+callback_data
+⏰ 提醒策略
+SET:REMIND
+🏷 标签体系
+SET:TAGS
+📌 默认模板
+SET:TEMPLATE
+🗃 数据导出
+SET:EXPORT
+💾 自动备份
+SET:BACKUP
+🧾 审计日志
+SET:AUDIT
+🔙 返回
+M:HOME
+
+四、对象卡片按钮（核心闭环）
+1）任务卡片（TASK CARD）
+任务详情展示后，按钮：
+按钮
+callback_data
+▶️ 开始
+TASK:START:{id}
+📈 进度更新
+TASK:PROG:{id}
+🔄 转交
+TASK:TRANSFER:{id}
+⏸ 暂停
+TASK:PAUSE:{id}
+⏳ 延期
+TASK:DELAY:{id}
+✅ 完成
+TASK:DONE:{id}
+🗄 归档
+TASK:ARCH:{id}
+
+2）需求卡片（REQ CARD）
+按钮
+callback_data
+👍 批准
+REQ:APP:{id}
+❌ 驳回
+REQ:REJ:{id}
+🔗 绑定项目
+REQ:LINKPROJ:{id}
+📌 转任务
+REQ:TOTASK:{id}
+🗄 归档
+REQ:ARCH:{id}
+
+3）资金流水卡片（FIN CARD）
+按钮
+callback_data
+📎 上传凭证
+FIN:PROOF:{id}
+✅ 审核通过
+FIN:PASS:{id}
+❌ 驳回
+FIN:FAIL:{id}
+🔍 查看明细
+FIN:DETAIL:{id}
+🗄 归档
+FIN:ARCH:{id}
+审核按钮只对财务/管理员显示。
+
+4）文档卡片（DOC CARD）
+按钮
+callback_data
+🏷 打标签
+DOC:TAG:{id}
+🔗 关联项目
+DOC:LINK:{id}
+📌 置顶
+DOC:PIN:{id}
+🗄 归档
+DOC:ARCH:{id}
+🗑 删除
+DOC:DEL:{id}
+
+五、交互规范（让体验像企业系统）
+1）所有“新增”都用表单式流程（多轮对话）
+例如 TASK:NEW：
+	•	标题 → 描述 → 项目 → 负责人 → 优先级 → 截止时间 → 确认
+2）所有模块必须带“返回”按钮
+避免迷路，这是 TG 产品体验的生命线。
+3）按钮 callback_data 统一规范
+推荐格式：
+模块:动作:ID 例如：
+	•	TASK:DONE:1024
+	•	FIN:PASS:5566
+这样后端路由极其清晰。
+
+六、群组/频道协同输出（默认策略）
+	•	群组：创建、更新、讨论、审批
+	•	频道：推送 BI 看板、周报、资金月报（可脱敏）
+频道推送建议统一由 BI:PUSH 控制。
+
+
+
+下面给你一份可直接落地的完整 JSON 配置文件（菜单树 + 卡片按钮 + 表单流程 + 权限可见性），开发拿去即可做路由和渲染。
+你可以把它命名为：bot_menu_config.json
+
+
+{
+  "meta": {
+    "name": "TG Internal Ops Bot",
+    "version": "1.0.0",
+    "entry_command": ["/start", "/menu"],
+    "default_language": "zh-CN",
+    "callback_prefix": "CB",
+    "ui_style": "inline_keyboard",
+    "routing_mode": "callback_data"
+  },
+
+  "roles": {
+    "OWNER": {
+      "level": 100,
+      "description": "最高权限"
+    },
+    "ADMIN": {
+      "level": 80,
+      "description": "管理员（项目/财务/制度）"
+    },
+    "PM": {
+      "level": 60,
+      "description": "项目负责人"
+    },
+    "FINANCE": {
+      "level": 55,
+      "description": "财务角色"
+    },
+    "MEMBER": {
+      "level": 30,
+      "description": "普通成员"
+    },
+    "GUEST": {
+      "level": 10,
+      "description": "访客（只读）"
+    }
+  },
+
+  "permissions": {
+    "visible_if": {
+      "OWNER_ONLY": ["OWNER"],
+      "ADMIN_ONLY": ["OWNER", "ADMIN"],
+      "PM_OR_ADMIN": ["OWNER", "ADMIN", "PM"],
+      "FINANCE_OR_ADMIN": ["OWNER", "ADMIN", "FINANCE"],
+      "ALL_USERS": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"]
+    }
+  },
+
+  "ui": {
+    "global_buttons": {
+      "back_home": {
+        "text": "🔙 返回主页",
+        "callback_data": "M:HOME",
+        "visible_roles": "ALL_USERS"
+      },
+      "search": {
+        "text": "🔍 搜索",
+        "callback_data": "M:SEARCH",
+        "visible_roles": "ALL_USERS"
+      }
+    }
+  },
+
+  "menus": {
+    "M:HOME": {
+      "title": "📌 内部协作控制台",
+      "description": "让任务有闭环，让项目有节奏，让资金有轨迹。",
+      "layout": {
+        "columns": 2
+      },
+      "buttons": [
+        {
+          "text": "📁 项目管理",
+          "callback_data": "M:PROJ",
+          "visible_roles": "ALL_USERS"
+        },
+        {
+          "text": "✅ 任务中心",
+          "callback_data": "M:TASK",
+          "visible_roles": "ALL_USERS"
+        },
+        {
+          "text": "📌 需求池",
+          "callback_data": "M:REQ",
+          "visible_roles": "ALL_USERS"
+        },
+        {
+          "text": "📚 文档沉淀",
+          "callback_data": "M:DOC",
+          "visible_roles": "ALL_USERS"
+        },
+        {
+          "text": "💰 资金动向",
+          "callback_data": "M:FIN",
+          "visible_roles": "FINANCE_OR_ADMIN"
+        },
+        {
+          "text": "📊 数据看板",
+          "callback_data": "M:BI",
+          "visible_roles": "ALL_USERS"
+        },
+        {
+          "text": "👥 成员/权限",
+          "callback_data": "M:MEM",
+          "visible_roles": "ADMIN_ONLY"
+        },
+        {
+          "text": "⚙️ 系统设置",
+          "callback_data": "M:SET",
+          "visible_roles": "ADMIN_ONLY"
+        }
+      ],
+      "footer_buttons": [
+        {
+          "ref": "search"
+        }
+      ]
+    },
+
+    "M:PROJ": {
+      "title": "📁 项目管理",
+      "description": "以里程碑驱动进度，以指标锁定交付。",
+      "layout": {
+        "columns": 2
+      },
+      "buttons": [
+        {
+          "text": "➕ 新建项目",
+          "callback_data": "PROJ:NEW",
+          "visible_roles": "PM_OR_ADMIN"
+        },
+        {
+          "text": "📋 项目列表",
+          "callback_data": "PROJ:LIST",
+          "visible_roles": "ALL_USERS"
+        },
+        {
+          "text": "🎯 里程碑管理",
+          "callback_data": "PROJ:MILE",
+          "visible_roles": "PM_OR_ADMIN"
+        },
+        {
+          "text": "⚠️ 风险/阻塞登记",
+          "callback_data": "PROJ:RISK",
+          "visible_roles": "ALL_USERS"
+        },
+        {
+          "text": "📌 项目周报生成",
+          "callback_data": "PROJ:REPORT",
+          "visible_roles": "PM_OR_ADMIN"
+        }
+      ],
+      "footer_buttons": [
+        {
+          "ref": "back_home"
+        }
+      ]
+    },
+
+    "M:TASK": {
+      "title": "✅ 任务中心",
+      "description": "把讨论变成行动，把行动变成结果。",
+      "layout": {
+        "columns": 2
+      },
+      "buttons": [
+        {
+          "text": "➕ 新建任务",
+          "callback_data": "TASK:NEW",
+          "visible_roles": "ALL_USERS"
+        },
+        {
+          "text": "👤 我的任务",
+          "callback_data": "TASK:MY",
+          "visible_roles": "ALL_USERS"
+        },
+        {
+          "text": "📌 今日待办",
+          "callback_data": "TASK:TODAY",
+          "visible_roles": "ALL_USERS"
+        },
+        {
+          "text": "⏳ 即将到期",
+          "callback_data": "TASK:DUESOON",
+          "visible_roles": "ALL_USERS"
+        },
+        {
+          "text": "🚨 超期任务",
+          "callback_data": "TASK:OVERDUE",
+          "visible_roles": "PM_OR_ADMIN"
+        },
+        {
+          "text": "📂 已归档任务",
+          "callback_data": "TASK:ARCH",
+          "visible_roles": "PM_OR_ADMIN"
+        }
+      ],
+      "footer_buttons": [
+        {
+          "ref": "back_home"
+        }
+      ]
+    },
+
+    "M:REQ": {
+      "title": "📌 需求池",
+      "description": "需求必须有编号、有结论、有归宿。",
+      "layout": {
+        "columns": 2
+      },
+      "buttons": [
+        {
+          "text": "➕ 发布需求",
+          "callback_data": "REQ:NEW",
+          "visible_roles": "ALL_USERS"
+        },
+        {
+          "text": "📥 待评审需求",
+          "callback_data": "REQ:PENDING",
+          "visible_roles": "PM_OR_ADMIN"
+        },
+        {
+          "text": "🚀 已立项需求",
+          "callback_data": "REQ:APPROVED",
+          "visible_roles": "ALL_USERS"
+        },
+        {
+          "text": "❌ 已驳回需求",
+          "callback_data": "REQ:REJECTED",
+          "visible_roles": "PM_OR_ADMIN"
+        },
+        {
+          "text": "🧾 需求统计",
+          "callback_data": "REQ:STATS",
+          "visible_roles": "PM_OR_ADMIN"
+        }
+      ],
+      "footer_buttons": [
+        {
+          "ref": "back_home"
+        }
+      ]
+    },
+
+    "M:DOC": {
+      "title": "📚 文档沉淀",
+      "description": "把经验固化为资产，把知识沉淀为壁垒。",
+      "layout": {
+        "columns": 2
+      },
+      "buttons": [
+        {
+          "text": "➕ 上传文档",
+          "callback_data": "DOC:ADD",
+          "visible_roles": "ALL_USERS"
+        },
+        {
+          "text": "📝 会议纪要",
+          "callback_data": "DOC:MINUTES",
+          "visible_roles": "ALL_USERS"
+        },
+        {
+          "text": "📂 分类目录",
+          "callback_data": "DOC:CATE",
+          "visible_roles": "ALL_USERS"
+        },
+        {
+          "text": "🔗 关联项目资料",
+          "callback_data": "DOC:LINKPROJ",
+          "visible_roles": "PM_OR_ADMIN"
+        },
+        {
+          "text": "🔍 搜索文档",
+          "callback_data": "DOC:SEARCH",
+          "visible_roles": "ALL_USERS"
+        },
+        {
+          "text": "🗄 已归档",
+          "callback_data": "DOC:ARCH",
+          "visible_roles": "PM_OR_ADMIN"
+        }
+      ],
+      "footer_buttons": [
+        {
+          "ref": "back_home"
+        }
+      ]
+    },
+
+    "M:FIN": {
+      "title": "💰 资金动向",
+      "description": "每一笔钱都要可追溯，每一次支出都要可审计。",
+      "layout": {
+        "columns": 2
+      },
+      "buttons": [
+        {
+          "text": "➕ 录入收入",
+          "callback_data": "FIN:IN",
+          "visible_roles": "FINANCE_OR_ADMIN"
+        },
+        {
+          "text": "➖ 录入支出",
+          "callback_data": "FIN:OUT",
+          "visible_roles": "FINANCE_OR_ADMIN"
+        },
+        {
+          "text": "🧾 报销申请",
+          "callback_data": "FIN:REIMB",
+          "visible_roles": "ALL_USERS"
+        },
+        {
+          "text": "⏳ 待审核",
+          "callback_data": "FIN:APPROVALS",
+          "visible_roles": "FINANCE_OR_ADMIN"
+        },
+        {
+          "text": "📊 月度报表",
+          "callback_data": "FIN:MONTHLY",
+          "visible_roles": "FINANCE_OR_ADMIN"
+        },
+        {
+          "text": "📂 按项目统计",
+          "callback_data": "FIN:BYPROJ",
+          "visible_roles": "FINANCE_OR_ADMIN"
+        }
+      ],
+      "footer_buttons": [
+        {
+          "ref": "back_home"
+        }
+      ]
+    },
+
+    "M:BI": {
+      "title": "📊 数据看板",
+      "description": "让团队的节奏可视化，让风险提前暴露。",
+      "layout": {
+        "columns": 2
+      },
+      "buttons": [
+        {
+          "text": "📌 今日概览",
+          "callback_data": "BI:DAILY",
+          "visible_roles": "ALL_USERS"
+        },
+        {
+          "text": "📅 本周进度",
+          "callback_data": "BI:WEEKLY",
+          "visible_roles": "ALL_USERS"
+        },
+        {
+          "text": "⚠️ 风险预警",
+          "callback_data": "BI:RISK",
+          "visible_roles": "PM_OR_ADMIN"
+        },
+        {
+          "text": "💰 本月资金流",
+          "callback_data": "BI:FIN",
+          "visible_roles": "FINANCE_OR_ADMIN"
+        },
+        {
+          "text": "🧾 自动生成周报",
+          "callback_data": "BI:REPORT",
+          "visible_roles": "PM_OR_ADMIN"
+        },
+        {
+          "text": "📢 推送到频道",
+          "callback_data": "BI:PUSH",
+          "visible_roles": "ADMIN_ONLY"
+        }
+      ],
+      "footer_buttons": [
+        {
+          "ref": "back_home"
+        }
+      ]
+    },
+
+    "M:MEM": {
+      "title": "👥 成员/权限",
+      "description": "用角色定义边界，用权限守住秩序。",
+      "layout": {
+        "columns": 2
+      },
+      "buttons": [
+        {
+          "text": "👤 成员列表",
+          "callback_data": "MEM:LIST",
+          "visible_roles": "ADMIN_ONLY"
+        },
+        {
+          "text": "🧩 角色分配",
+          "callback_data": "MEM:ROLE",
+          "visible_roles": "ADMIN_ONLY"
+        },
+        {
+          "text": "🛡 权限策略",
+          "callback_data": "MEM:POLICY",
+          "visible_roles": "ADMIN_ONLY"
+        },
+        {
+          "text": "📌 黑名单/白名单",
+          "callback_data": "MEM:ACL",
+          "visible_roles": "ADMIN_ONLY"
+        }
+      ],
+      "footer_buttons": [
+        {
+          "ref": "back_home"
+        }
+      ]
+    },
+
+    "M:SET": {
+      "title": "⚙️ 系统设置",
+      "description": "系统不是工具，是组织的规则引擎。",
+      "layout": {
+        "columns": 2
+      },
+      "buttons": [
+        {
+          "text": "⏰ 提醒策略",
+          "callback_data": "SET:REMIND",
+          "visible_roles": "ADMIN_ONLY"
+        },
+        {
+          "text": "🏷 标签体系",
+          "callback_data": "SET:TAGS",
+          "visible_roles": "ADMIN_ONLY"
+        },
+        {
+          "text": "📌 默认模板",
+          "callback_data": "SET:TEMPLATE",
+          "visible_roles": "ADMIN_ONLY"
+        },
+        {
+          "text": "🗃 数据导出",
+          "callback_data": "SET:EXPORT",
+          "visible_roles": "ADMIN_ONLY"
+        },
+        {
+          "text": "💾 自动备份",
+          "callback_data": "SET:BACKUP",
+          "visible_roles": "ADMIN_ONLY"
+        },
+        {
+          "text": "🧾 审计日志",
+          "callback_data": "SET:AUDIT",
+          "visible_roles": "ADMIN_ONLY"
+        }
+      ],
+      "footer_buttons": [
+        {
+          "ref": "back_home"
+        }
+      ]
+    }
+  },
+
+  "cards": {
+    "task_card": {
+      "title_template": "✅ 任务 #{task_id}",
+      "body_template": "- 标题：{title}\n- 负责人：{assignee}\n- 截止：{due_date}\n- 优先级：{priority}\n- 状态：{status}\n- 进度：{progress}%\n- 项目：{project_name}\n- 创建人：{creator}\n- 更新时间：{updated_at}",
+      "layout": {
+        "columns": 3
+      },
+      "buttons": [
+        {
+          "text": "▶️ 开始",
+          "callback_data": "TASK:START:{task_id}",
+          "visible_roles": "ALL_USERS"
+        },
+        {
+          "text": "📈 进度更新",
+          "callback_data": "TASK:PROG:{task_id}",
+          "visible_roles": "ALL_USERS"
+        },
+        {
+          "text": "🔄 转交",
+          "callback_data": "TASK:TRANSFER:{task_id}",
+          "visible_roles": "PM_OR_ADMIN"
+        },
+        {
+          "text": "⏸ 暂停",
+          "callback_data": "TASK:PAUSE:{task_id}",
+          "visible_roles": "PM_OR_ADMIN"
+        },
+        {
+          "text": "⏳ 延期",
+          "callback_data": "TASK:DELAY:{task_id}",
+          "visible_roles": "PM_OR_ADMIN"
+        },
+        {
+          "text": "✅ 完成",
+          "callback_data": "TASK:DONE:{task_id}",
+          "visible_roles": "ALL_USERS"
+        },
+        {
+          "text": "🗄 归档",
+          "callback_data": "TASK:ARCH:{task_id}",
+          "visible_roles": "PM_OR_ADMIN"
+        }
+      ]
+    },
+
+    "req_card": {
+      "title_template": "📌 需求 #{req_id}",
+      "body_template": "- 标题：{title}\n- 优先级：{priority}\n- 状态：{status}\n- 提交人：{creator}\n- 截止：{due_date}\n- 关联项目：{project_name}\n- 验收标准：{acceptance}\n- 更新时间：{updated_at}",
+      "layout": {
+        "columns": 2
+      },
+      "buttons": [
+        {
+          "text": "👍 批准",
+          "callback_data": "REQ:APP:{req_id}",
+          "visible_roles": "PM_OR_ADMIN"
+        },
+        {
+          "text": "❌ 驳回",
+          "callback_data": "REQ:REJ:{req_id}",
+          "visible_roles": "PM_OR_ADMIN"
+        },
+        {
+          "text": "🔗 绑定项目",
+          "callback_data": "REQ:LINKPROJ:{req_id}",
+          "visible_roles": "PM_OR_ADMIN"
+        },
+        {
+          "text": "📌 转任务",
+          "callback_data": "REQ:TOTASK:{req_id}",
+          "visible_roles": "PM_OR_ADMIN"
+        },
+        {
+          "text": "🗄 归档",
+          "callback_data": "REQ:ARCH:{req_id}",
+          "visible_roles": "PM_OR_ADMIN"
+        }
+      ]
+    },
+
+    "doc_card": {
+      "title_template": "📚 文档 #{doc_id}",
+      "body_template": "- 标题：{title}\n- 类型：{category}\n- 标签：{tags}\n- 上传人：{creator}\n- 关联项目：{project_name}\n- 创建时间：{created_at}",
+      "layout": {
+        "columns": 2
+      },
+      "buttons": [
+        {
+          "text": "🏷 打标签",
+          "callback_data": "DOC:TAG:{doc_id}",
+          "visible_roles": "PM_OR_ADMIN"
+        },
+        {
+          "text": "🔗 关联项目",
+          "callback_data": "DOC:LINK:{doc_id}",
+          "visible_roles": "PM_OR_ADMIN"
+        },
+        {
+          "text": "📌 置顶",
+          "callback_data": "DOC:PIN:{doc_id}",
+          "visible_roles": "ADMIN_ONLY"
+        },
+        {
+          "text": "🗄 归档",
+          "callback_data": "DOC:ARCH:{doc_id}",
+          "visible_roles": "PM_OR_ADMIN"
+        },
+        {
+          "text": "🗑 删除",
+          "callback_data": "DOC:DEL:{doc_id}",
+          "visible_roles": "ADMIN_ONLY"
+        }
+      ]
+    },
+
+    "fin_card": {
+      "title_template": "💰 流水 #{fin_id}",
+      "body_template": "- 类型：{type}\n- 金额：{amount} {currency}\n- 用途：{purpose}\n- 状态：{status}\n- 项目：{project_name}\n- 提交人：{creator}\n- 发生日期：{occur_date}\n- 更新时间：{updated_at}",
+      "layout": {
+        "columns": 2
+      },
+      "buttons": [
+        {
+          "text": "📎 上传凭证",
+          "callback_data": "FIN:PROOF:{fin_id}",
+          "visible_roles": "ALL_USERS"
+        },
+        {
+          "text": "✅ 审核通过",
+          "callback_data": "FIN:PASS:{fin_id}",
+          "visible_roles": "FINANCE_OR_ADMIN"
+        },
+        {
+          "text": "❌ 驳回",
+          "callback_data": "FIN:FAIL:{fin_id}",
+          "visible_roles": "FINANCE_OR_ADMIN"
+        },
+        {
+          "text": "🔍 查看明细",
+          "callback_data": "FIN:DETAIL:{fin_id}",
+          "visible_roles": "ALL_USERS"
+        },
+        {
+          "text": "🗄 归档",
+          "callback_data": "FIN:ARCH:{fin_id}",
+          "visible_roles": "FINANCE_OR_ADMIN"
+        }
+      ]
+    }
+  },
+
+  "flows": {
+    "TASK:NEW": {
+      "title": "创建任务",
+      "steps": [
+        {
+          "key": "title",
+          "type": "text",
+          "prompt": "请输入任务标题：",
+          "required": true,
+          "max_length": 120
+        },
+        {
+          "key": "description",
+          "type": "text",
+          "prompt": "请输入任务描述（可选）：",
+          "required": false,
+          "max_length": 2000
+        },
+        {
+          "key": "project_id",
+          "type": "select_project",
+          "prompt": "请选择关联项目：",
+          "required": false
+        },
+        {
+          "key": "assignee_id",
+          "type": "select_member",
+          "prompt": "请选择负责人：",
+          "required": true
+        },
+        {
+          "key": "priority",
+          "type": "select",
+          "prompt": "请选择优先级：",
+          "required": true,
+          "options": [
+            { "text": "🔥 高", "value": "HIGH" },
+            { "text": "⚡ 中", "value": "MEDIUM" },
+            { "text": "🌿 低", "value": "LOW" }
+          ]
+        },
+        {
+          "key": "due_date",
+          "type": "date_select",
+          "prompt": "请选择截止日期：",
+          "required": true,
+          "quick_options": [
+            { "text": "📌 今天", "value": "TODAY" },
+            { "text": "📍 明天", "value": "TOMORROW" },
+            { "text": "📅 本周末", "value": "THIS_WEEKEND" },
+            { "text": "🗓 自定义", "value": "CUSTOM" }
+          ]
+        },
+        {
+          "key": "confirm",
+          "type": "confirm",
+          "prompt": "确认创建任务？",
+          "required": true,
+          "options": [
+            { "text": "✅ 确认发布", "value": true },
+            { "text": "❌ 取消", "value": false }
+          ]
+        }
+      ],
+      "on_success": {
+        "action": "create_task",
+        "notify_assignee": true,
+        "send_task_card": true
+      }
+    },
+
+    "REQ:NEW": {
+      "title": "发布需求",
+      "steps": [
+        {
+          "key": "title",
+          "type": "text",
+          "prompt": "请输入需求标题：",
+          "required": true,
+          "max_length": 120
+        },
+        {
+          "key": "background",
+          "type": "text",
+          "prompt": "请输入需求背景/说明：",
+          "required": true,
+          "max_length": 2000
+        },
+        {
+          "key": "acceptance",
+          "type": "text",
+          "prompt": "请输入验收标准（越清晰越能落地）：",
+          "required": true,
+          "max_length": 2000
+        },
+        {
+          "key": "priority",
+          "type": "select",
+          "prompt": "请选择优先级：",
+          "required": true,
+          "options": [
+            { "text": "🔥 高", "value": "HIGH" },
+            { "text": "⚡ 中", "value": "MEDIUM" },
+            { "text": "🌿 低", "value": "LOW" }
+          ]
+        },
+        {
+          "key": "due_date",
+          "type": "date_select",
+          "prompt": "请选择期望完成日期：",
+          "required": false,
+          "quick_options": [
+            { "text": "📌 本周", "value": "THIS_WEEK" },
+            { "text": "📅 本月", "value": "THIS_MONTH" },
+            { "text": "🗓 自定义", "value": "CUSTOM" }
+          ]
+        },
+        {
+          "key": "confirm",
+          "type": "confirm",
+          "prompt": "确认提交需求？",
+          "required": true,
+          "options": [
+            { "text": "✅ 确认提交", "value": true },
+            { "text": "❌ 取消", "value": false }
+          ]
+        }
+      ],
+      "on_success": {
+        "action": "create_requirement",
+        "send_req_card": true,
+        "notify_pm_or_admin": true
+      }
+    },
+
+    "DOC:ADD": {
+      "title": "上传文档",
+      "steps": [
+        {
+          "key": "doc_title",
+          "type": "text",
+          "prompt": "请输入文档标题：",
+          "required": true,
+          "max_length": 150
+        },
+        {
+          "key": "doc_file",
+          "type": "file",
+          "prompt": "请发送文件/图片/链接：",
+          "required": true
+        },
+        {
+          "key": "category",
+          "type": "select",
+          "prompt": "请选择文档分类：",
+          "required": true,
+          "options": [
+            { "text": "📌 制度流程", "value": "POLICY" },
+            { "text": "📁 项目资料", "value": "PROJECT" },
+            { "text": "📝 会议纪要", "value": "MINUTES" },
+            { "text": "📚 知识沉淀", "value": "KNOWLEDGE" },
+            { "text": "💰 财务凭证", "value": "FINANCE" },
+            { "text": "📎 其他", "value": "OTHER" }
+          ]
+        },
+        {
+          "key": "project_id",
+          "type": "select_project",
+          "prompt": "是否关联项目？（可选）",
+          "required": false
+        },
+        {
+          "key": "tags",
+          "type": "text",
+          "prompt": "请输入标签（用逗号分隔，可选）：",
+          "required": false,
+          "max_length": 200
+        },
+        {
+          "key": "confirm",
+          "type": "confirm",
+          "prompt": "确认归档该文档？",
+          "required": true,
+          "options": [
+            { "text": "✅ 确认归档", "value": true },
+            { "text": "❌ 取消", "value": false }
+          ]
+        }
+      ],
+      "on_success": {
+        "action": "create_doc",
+        "send_doc_card": true
+      }
+    },
+
+    "FIN:REIMB": {
+      "title": "报销申请",
+      "steps": [
+        {
+          "key": "amount",
+          "type": "number",
+          "prompt": "请输入报销金额：",
+          "required": true,
+          "min": 0.01
+        },
+        {
+          "key": "currency",
+          "type": "select",
+          "prompt": "请选择币种：",
+          "required": true,
+          "options": [
+            { "text": "CNY ¥", "value": "CNY" },
+            { "text": "USD $", "value": "USD" },
+            { "text": "USDT ₮", "value": "USDT" }
+          ]
+        },
+        {
+          "key": "purpose",
+          "type": "text",
+          "prompt": "请输入用途说明：",
+          "required": true,
+          "max_length": 500
+        },
+        {
+          "key": "project_id",
+          "type": "select_project",
+          "prompt": "请选择关联项目（可选）：",
+          "required": false
+        },
+        {
+          "key": "proof",
+          "type": "file",
+          "prompt": "请上传凭证（图片/文件，可选）：",
+          "required": false
+        },
+        {
+          "key": "confirm",
+          "type": "confirm",
+          "prompt": "确认提交报销申请？",
+          "required": true,
+          "options": [
+            { "text": "✅ 提交审核", "value": true },
+            { "text": "❌ 取消", "value": false }
+          ]
+        }
+      ],
+      "on_success": {
+        "action": "create_finance_reimb",
+        "status": "PENDING_APPROVAL",
+        "send_fin_card": true,
+        "notify_finance": true
+      }
+    }
+  },
+
+  "search": {
+    "entry": "M:SEARCH",
+    "supported_targets": ["TASK", "REQ", "DOC", "FIN", "PROJ"],
+    "default_limit": 10,
+    "query_min_length": 2
+  },
+
+  "routing": {
+    "menu_routes": [
+      "M:HOME",
+      "M:PROJ",
+      "M:TASK",
+      "M:REQ",
+      "M:DOC",
+      "M:FIN",
+      "M:BI",
+      "M:MEM",
+      "M:SET",
+      "M:SEARCH"
+    ],
+    "action_routes": [
+      "PROJ:NEW",
+      "PROJ:LIST",
+      "PROJ:MILE",
+      "PROJ:RISK",
+      "PROJ:REPORT",
+
+      "TASK:NEW",
+      "TASK:MY",
+      "TASK:TODAY",
+      "TASK:DUESOON",
+      "TASK:OVERDUE",
+      "TASK:ARCH",
+
+      "REQ:NEW",
+      "REQ:PENDING",
+      "REQ:APPROVED",
+      "REQ:REJECTED",
+      "REQ:STATS",
+
+      "DOC:ADD",
+      "DOC:MINUTES",
+      "DOC:CATE",
+      "DOC:LINKPROJ",
+      "DOC:SEARCH",
+      "DOC:ARCH",
+
+      "FIN:IN",
+      "FIN:OUT",
+      "FIN:REIMB",
+      "FIN:APPROVALS",
+      "FIN:MONTHLY",
+      "FIN:BYPROJ",
+
+      "BI:DAILY",
+      "BI:WEEKLY",
+      "BI:RISK",
+      "BI:FIN",
+      "BI:REPORT",
+      "BI:PUSH",
+
+      "MEM:LIST",
+      "MEM:ROLE",
+      "MEM:POLICY",
+      "MEM:ACL",
+
+      "SET:REMIND",
+      "SET:TAGS",
+      "SET:TEMPLATE",
+      "SET:EXPORT",
+      "SET:BACKUP",
+      "SET:AUDIT"
+    ],
+    "card_routes": [
+      "TASK:START:{id}",
+      "TASK:PROG:{id}",
+      "TASK:TRANSFER:{id}",
+      "TASK:PAUSE:{id}",
+      "TASK:DELAY:{id}",
+      "TASK:DONE:{id}",
+      "TASK:ARCH:{id}",
+
+      "REQ:APP:{id}",
+      "REQ:REJ:{id}",
+      "REQ:LINKPROJ:{id}",
+      "REQ:TOTASK:{id}",
+      "REQ:ARCH:{id}",
+
+      "DOC:TAG:{id}",
+      "DOC:LINK:{id}",
+      "DOC:PIN:{id}",
+      "DOC:ARCH:{id}",
+      "DOC:DEL:{id}",
+
+      "FIN:PROOF:{id}",
+      "FIN:PASS:{id}",
+      "FIN:FAIL:{id}",
+      "FIN:DETAIL:{id}",
+      "FIN:ARCH:{id}"
+    ]
+  }
+}
+
+
+如果你要更“工程化”，下一步我建议我再给你两份文件：
+	•	permissions_policy.json（细粒度到每个 callback 的可执行权限）
+	•	menu_rendering_rules.json（比如按钮分组、分页、项目列表动态渲染规则）
+你一句话，我就继续补齐，让它真正像企业中台配置系统。
+
+补齐
+
+行，直接给你补齐两份企业级配置文件：权限策略 + 菜单渲染规则。开发拿到这三份配置，就可以像搭积木一样做出“内部中台机器人”。
+下面是：
+	•	permissions_policy.json
+	•	menu_rendering_rules.json
+
+1）permissions_policy.json（细粒度权限策略）
+作用：控制“谁能看到、谁能点、谁能审批、谁能删除”，并支持字段级权限与操作审计。
+
+{
+  "meta": {
+    "name": "permissions_policy",
+    "version": "1.0.0",
+    "description": "RBAC + Action-level Permission Control"
+  },
+
+  "roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"],
+
+  "rules": {
+    "default": {
+      "visible": true,
+      "executable": false,
+      "auditable": true
+    },
+
+    "M:HOME": {
+      "visible_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"],
+      "executable_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"]
+    },
+
+    "M:PROJ": {
+      "visible_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"],
+      "executable_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"]
+    },
+
+    "M:TASK": {
+      "visible_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"],
+      "executable_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"]
+    },
+
+    "M:REQ": {
+      "visible_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"],
+      "executable_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"]
+    },
+
+    "M:DOC": {
+      "visible_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"],
+      "executable_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"]
+    },
+
+    "M:FIN": {
+      "visible_roles": ["OWNER", "ADMIN", "FINANCE"],
+      "executable_roles": ["OWNER", "ADMIN", "FINANCE"]
+    },
+
+    "M:BI": {
+      "visible_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"],
+      "executable_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"]
+    },
+
+    "M:MEM": {
+      "visible_roles": ["OWNER", "ADMIN"],
+      "executable_roles": ["OWNER", "ADMIN"]
+    },
+
+    "M:SET": {
+      "visible_roles": ["OWNER", "ADMIN"],
+      "executable_roles": ["OWNER", "ADMIN"]
+    },
+
+    "M:SEARCH": {
+      "visible_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"],
+      "executable_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"]
+    },
+
+    "PROJ:NEW": {
+      "visible_roles": ["OWNER", "ADMIN", "PM"],
+      "executable_roles": ["OWNER", "ADMIN", "PM"],
+      "audit_level": "HIGH"
+    },
+
+    "PROJ:LIST": {
+      "visible_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"],
+      "executable_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"]
+    },
+
+    "PROJ:MILE": {
+      "visible_roles": ["OWNER", "ADMIN", "PM"],
+      "executable_roles": ["OWNER", "ADMIN", "PM"]
+    },
+
+    "PROJ:RISK": {
+      "visible_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER"],
+      "executable_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER"],
+      "audit_level": "MEDIUM"
+    },
+
+    "PROJ:REPORT": {
+      "visible_roles": ["OWNER", "ADMIN", "PM"],
+      "executable_roles": ["OWNER", "ADMIN", "PM"]
+    },
+
+    "TASK:NEW": {
+      "visible_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER"],
+      "executable_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER"]
+    },
+
+    "TASK:MY": {
+      "visible_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"],
+      "executable_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"]
+    },
+
+    "TASK:TODAY": {
+      "visible_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"],
+      "executable_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"]
+    },
+
+    "TASK:DUESOON": {
+      "visible_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER"],
+      "executable_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER"]
+    },
+
+    "TASK:OVERDUE": {
+      "visible_roles": ["OWNER", "ADMIN", "PM"],
+      "executable_roles": ["OWNER", "ADMIN", "PM"],
+      "audit_level": "MEDIUM"
+    },
+
+    "TASK:ARCH": {
+      "visible_roles": ["OWNER", "ADMIN", "PM"],
+      "executable_roles": ["OWNER", "ADMIN", "PM"]
+    },
+
+    "REQ:NEW": {
+      "visible_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER"],
+      "executable_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER"]
+    },
+
+    "REQ:PENDING": {
+      "visible_roles": ["OWNER", "ADMIN", "PM"],
+      "executable_roles": ["OWNER", "ADMIN", "PM"]
+    },
+
+    "REQ:APPROVED": {
+      "visible_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"],
+      "executable_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"]
+    },
+
+    "REQ:REJECTED": {
+      "visible_roles": ["OWNER", "ADMIN", "PM"],
+      "executable_roles": ["OWNER", "ADMIN", "PM"]
+    },
+
+    "REQ:STATS": {
+      "visible_roles": ["OWNER", "ADMIN", "PM"],
+      "executable_roles": ["OWNER", "ADMIN", "PM"]
+    },
+
+    "DOC:ADD": {
+      "visible_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER"],
+      "executable_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER"],
+      "audit_level": "LOW"
+    },
+
+    "DOC:MINUTES": {
+      "visible_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER"],
+      "executable_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER"]
+    },
+
+    "DOC:CATE": {
+      "visible_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"],
+      "executable_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"]
+    },
+
+    "DOC:LINKPROJ": {
+      "visible_roles": ["OWNER", "ADMIN", "PM"],
+      "executable_roles": ["OWNER", "ADMIN", "PM"]
+    },
+
+    "DOC:SEARCH": {
+      "visible_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"],
+      "executable_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"]
+    },
+
+    "DOC:ARCH": {
+      "visible_roles": ["OWNER", "ADMIN", "PM"],
+      "executable_roles": ["OWNER", "ADMIN", "PM"]
+    },
+
+    "FIN:IN": {
+      "visible_roles": ["OWNER", "ADMIN", "FINANCE"],
+      "executable_roles": ["OWNER", "ADMIN", "FINANCE"],
+      "audit_level": "HIGH"
+    },
+
+    "FIN:OUT": {
+      "visible_roles": ["OWNER", "ADMIN", "FINANCE"],
+      "executable_roles": ["OWNER", "ADMIN", "FINANCE"],
+      "audit_level": "HIGH"
+    },
+
+    "FIN:REIMB": {
+      "visible_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER"],
+      "executable_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER"],
+      "audit_level": "HIGH"
+    },
+
+    "FIN:APPROVALS": {
+      "visible_roles": ["OWNER", "ADMIN", "FINANCE"],
+      "executable_roles": ["OWNER", "ADMIN", "FINANCE"],
+      "audit_level": "HIGH"
+    },
+
+    "FIN:MONTHLY": {
+      "visible_roles": ["OWNER", "ADMIN", "FINANCE"],
+      "executable_roles": ["OWNER", "ADMIN", "FINANCE"],
+      "audit_level": "HIGH"
+    },
+
+    "FIN:BYPROJ": {
+      "visible_roles": ["OWNER", "ADMIN", "FINANCE"],
+      "executable_roles": ["OWNER", "ADMIN", "FINANCE"]
+    },
+
+    "BI:DAILY": {
+      "visible_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"],
+      "executable_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"]
+    },
+
+    "BI:WEEKLY": {
+      "visible_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"],
+      "executable_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"]
+    },
+
+    "BI:RISK": {
+      "visible_roles": ["OWNER", "ADMIN", "PM"],
+      "executable_roles": ["OWNER", "ADMIN", "PM"]
+    },
+
+    "BI:FIN": {
+      "visible_roles": ["OWNER", "ADMIN", "FINANCE"],
+      "executable_roles": ["OWNER", "ADMIN", "FINANCE"],
+      "audit_level": "HIGH"
+    },
+
+    "BI:REPORT": {
+      "visible_roles": ["OWNER", "ADMIN", "PM"],
+      "executable_roles": ["OWNER", "ADMIN", "PM"]
+    },
+
+    "BI:PUSH": {
+      "visible_roles": ["OWNER", "ADMIN"],
+      "executable_roles": ["OWNER", "ADMIN"],
+      "audit_level": "MEDIUM"
+    },
+
+    "MEM:LIST": {
+      "visible_roles": ["OWNER", "ADMIN"],
+      "executable_roles": ["OWNER", "ADMIN"],
+      "audit_level": "LOW"
+    },
+
+    "MEM:ROLE": {
+      "visible_roles": ["OWNER", "ADMIN"],
+      "executable_roles": ["OWNER", "ADMIN"],
+      "audit_level": "HIGH"
+    },
+
+    "MEM:POLICY": {
+      "visible_roles": ["OWNER", "ADMIN"],
+      "executable_roles": ["OWNER", "ADMIN"],
+      "audit_level": "HIGH"
+    },
+
+    "MEM:ACL": {
+      "visible_roles": ["OWNER", "ADMIN"],
+      "executable_roles": ["OWNER", "ADMIN"],
+      "audit_level": "HIGH"
+    },
+
+    "SET:REMIND": {
+      "visible_roles": ["OWNER", "ADMIN"],
+      "executable_roles": ["OWNER", "ADMIN"]
+    },
+
+    "SET:TAGS": {
+      "visible_roles": ["OWNER", "ADMIN"],
+      "executable_roles": ["OWNER", "ADMIN"]
+    },
+
+    "SET:TEMPLATE": {
+      "visible_roles": ["OWNER", "ADMIN"],
+      "executable_roles": ["OWNER", "ADMIN"]
+    },
+
+    "SET:EXPORT": {
+      "visible_roles": ["OWNER", "ADMIN"],
+      "executable_roles": ["OWNER", "ADMIN"],
+      "audit_level": "HIGH"
+    },
+
+    "SET:BACKUP": {
+      "visible_roles": ["OWNER", "ADMIN"],
+      "executable_roles": ["OWNER", "ADMIN"],
+      "audit_level": "HIGH"
+    },
+
+    "SET:AUDIT": {
+      "visible_roles": ["OWNER", "ADMIN"],
+      "executable_roles": ["OWNER", "ADMIN"],
+      "audit_level": "HIGH"
+    }
+  },
+
+  "object_level_policy": {
+    "TASK": {
+      "can_edit_if": ["creator", "assignee", "pm", "admin"],
+      "can_delete_if": ["admin", "owner"],
+      "can_archive_if": ["pm", "admin", "owner"]
+    },
+    "REQ": {
+      "can_edit_if": ["creator", "pm", "admin"],
+      "can_approve_if": ["pm", "admin", "owner"],
+      "can_reject_if": ["pm", "admin", "owner"]
+    },
+    "DOC": {
+      "can_edit_if": ["creator", "admin", "owner"],
+      "can_delete_if": ["admin", "owner"],
+      "can_pin_if": ["admin", "owner"]
+    },
+    "FIN": {
+      "can_view_if": ["finance", "admin", "owner"],
+      "can_submit_if": ["member", "pm", "finance", "admin", "owner"],
+      "can_approve_if": ["finance", "admin", "owner"],
+      "can_export_if": ["finance", "admin", "owner"]
+    },
+    "PROJ": {
+      "can_manage_if": ["pm", "admin", "owner"],
+      "can_close_if": ["pm", "admin", "owner"]
+    }
+  },
+
+  "field_level_policy": {
+    "FIN": {
+      "hidden_fields_for_roles": {
+        "MEMBER": ["audit_notes", "internal_account", "payer_account"],
+        "GUEST": ["amount", "currency", "audit_notes", "internal_account", "payer_account"]
+      }
+    }
+  },
+
+  "audit_policy": {
+    "default_level": "LOW",
+    "levels": {
+      "LOW": {
+        "store": true,
+        "notify_admin": false
+      },
+      "MEDIUM": {
+        "store": true,
+        "notify_admin": true
+      },
+      "HIGH": {
+        "store": true,
+        "notify_admin": true,
+        "immutable_log": true
+      }
+    }
+  }
+}
+
+
+2）menu_rendering_rules.json（动态菜单渲染规则）
+作用：解决真实场景问题： 项目列表/成员列表/任务列表会很长，必须支持分页、筛选、排序、动态按钮生成。
+
+{
+  "meta": {
+    "name": "menu_rendering_rules",
+    "version": "1.0.0",
+    "description": "Dynamic rendering rules for Telegram inline menus"
+  },
+
+  "rendering": {
+    "default_columns": 2,
+    "max_buttons_per_page": 8,
+    "enable_pagination": true,
+    "pagination_style": "compact",
+    "max_title_length": 50,
+    "max_button_text_length": 20
+  },
+
+  "list_pages": {
+    "PROJ:LIST": {
+      "source": "projects",
+      "page_size": 6,
+      "sort": {
+        "by": "updated_at",
+        "order": "desc"
+      },
+      "filters": [
+        {
+          "key": "status",
+          "type": "select",
+          "options": [
+            { "text": "全部", "value": "ALL" },
+            { "text": "进行中", "value": "ACTIVE" },
+            { "text": "风险中", "value": "RISK" },
+            { "text": "已暂停", "value": "PAUSED" },
+            { "text": "已完成", "value": "DONE" }
+          ]
+        }
+      ],
+      "item_button": {
+        "text_template": "📁 {name}",
+        "callback_template": "PROJ:OPEN:{id}"
+      },
+      "footer_buttons": [
+        {
+          "text": "➕ 新建项目",
+          "callback_data": "PROJ:NEW",
+          "visible_roles": ["OWNER", "ADMIN", "PM"]
+        },
+        {
+          "text": "🔙 返回",
+          "callback_data": "M:PROJ"
+        }
+      ]
+    },
+
+    "TASK:MY": {
+      "source": "tasks",
+      "page_size": 6,
+      "sort": {
+        "by": "due_date",
+        "order": "asc"
+      },
+      "filters": [
+        {
+          "key": "status",
+          "type": "select",
+          "options": [
+            { "text": "全部", "value": "ALL" },
+            { "text": "待办", "value": "TODO" },
+            { "text": "进行中", "value": "DOING" },
+            { "text": "待验收", "value": "VERIFY" },
+            { "text": "已完成", "value": "DONE" }
+          ]
+        },
+        {
+          "key": "priority",
+          "type": "select",
+          "options": [
+            { "text": "全部", "value": "ALL" },
+            { "text": "高", "value": "HIGH" },
+            { "text": "中", "value": "MEDIUM" },
+            { "text": "低", "value": "LOW" }
+          ]
+        }
+      ],
+      "item_button": {
+        "text_template": "✅ #{id} {title_short}",
+        "callback_template": "TASK:OPEN:{id}"
+      },
+      "footer_buttons": [
+        {
+          "text": "➕ 新建任务",
+          "callback_data": "TASK:NEW"
+        },
+        {
+          "text": "🔙 返回",
+          "callback_data": "M:TASK"
+        }
+      ]
+    },
+
+    "REQ:PENDING": {
+      "source": "requirements",
+      "page_size": 6,
+      "sort": {
+        "by": "created_at",
+        "order": "desc"
+      },
+      "filters": [
+        {
+          "key": "priority",
+          "type": "select",
+          "options": [
+            { "text": "全部", "value": "ALL" },
+            { "text": "高", "value": "HIGH" },
+            { "text": "中", "value": "MEDIUM" },
+            { "text": "低", "value": "LOW" }
+          ]
+        }
+      ],
+      "item_button": {
+        "text_template": "📌 #{id} {title_short}",
+        "callback_template": "REQ:OPEN:{id}"
+      },
+      "footer_buttons": [
+        {
+          "text": "🔙 返回",
+          "callback_data": "M:REQ"
+        }
+      ]
+    },
+
+    "DOC:CATE": {
+      "source": "doc_categories",
+      "page_size": 8,
+      "sort": {
+        "by": "name",
+        "order": "asc"
+      },
+      "item_button": {
+        "text_template": "📂 {name}",
+        "callback_template": "DOC:CATE:OPEN:{id}"
+      },
+      "footer_buttons": [
+        {
+          "text": "➕ 上传文档",
+          "callback_data": "DOC:ADD"
+        },
+        {
+          "text": "🔙 返回",
+          "callback_data": "M:DOC"
+        }
+      ]
+    },
+
+    "FIN:APPROVALS": {
+      "source": "finance_records",
+      "page_size": 6,
+      "sort": {
+        "by": "created_at",
+        "order": "desc"
+      },
+      "filters": [
+        {
+          "key": "status",
+          "type": "fixed",
+          "value": "PENDING_APPROVAL"
+        }
+      ],
+      "item_button": {
+        "text_template": "💰 #{id} {amount}{currency}",
+        "callback_template": "FIN:DETAIL:{id}"
+      },
+      "footer_buttons": [
+        {
+          "text": "📊 月度报表",
+          "callback_data": "FIN:MONTHLY"
+        },
+        {
+          "text": "🔙 返回",
+          "callback_data": "M:FIN"
+        }
+      ]
+    }
+  },
+
+  "pagination": {
+    "prev_button": {
+      "text": "⬅️ 上一页",
+      "callback_template": "PAGE:PREV:{route}:{page}"
+    },
+    "next_button": {
+      "text": "➡️ 下一页",
+      "callback_template": "PAGE:NEXT:{route}:{page}"
+    },
+    "page_info": {
+      "text_template": "📄 {page}/{total_pages}",
+      "callback_data": "PAGE:INFO"
+    }
+  },
+
+  "dynamic_selectors": {
+    "select_project": {
+      "source": "projects",
+      "page_size": 6,
+      "sort": {
+        "by": "updated_at",
+        "order": "desc"
+      },
+      "item_button": {
+        "text_template": "📁 {name}",
+        "callback_template": "SELECT:PROJECT:{id}"
+      },
+      "extra_buttons": [
+        {
+          "text": "🚫 不关联项目",
+          "callback_data": "SELECT:PROJECT:NONE"
+        }
+      ]
+    },
+
+    "select_member": {
+      "source": "members",
+      "page_size": 8,
+      "sort": {
+        "by": "role_level",
+        "order": "desc"
+      },
+      "item_button": {
+        "text_template": "👤 {username}",
+        "callback_template": "SELECT:MEMBER:{id}"
+      }
+    }
+  },
+
+  "text_shortening": {
+    "title_short": {
+      "max_length": 14,
+      "suffix": "…"
+    }
+  },
+
+  "system_messages": {
+    "empty_list": "📭 当前暂无数据。",
+    "no_permission": "⛔ 你没有权限执行该操作。",
+    "expired_callback": "⚠️ 该操作已过期，请重新打开菜单。",
+    "loading": "⏳ 正在加载，请稍候…"
+  },
+
+  "channel_push_rules": {
+    "enabled": true,
+    "allowed_routes": ["BI:PUSH", "PROJ:REPORT", "BI:REPORT", "FIN:MONTHLY"],
+    "default_channel_format": "markdown",
+    "sensitive_data_masking": {
+      "FIN": {
+        "mask_amount_for_roles": ["MEMBER", "GUEST"],
+        "mask_fields": ["payer_account", "internal_account"]
+      }
+    }
+  }
+}
+
+
+3）你现在拥有的“企业级三件套”
+你已经有了完整的中台化配置体系：
+	1	bot_menu_config.json（菜单树 + 卡片按钮 + 流程表单）
+	2	permissions_policy.json（权限体系 + 审计策略 + 字段级隐藏）
+	3	menu_rendering_rules.json（分页、筛选、动态列表、渲染规则）
+这三份文件组合起来，机器人就不再是硬编码产品，而是可运营、可扩展、可迭代的系统。
+
+如果你下一步要继续走得更狠，我建议补第 4 份文件：
+✅ event_bus_rules.json（事件触发器：任务完成→自动推送频道、资金审批→自动生成台账、项目延期→风险预警）
+你一句话，我就把事件引擎配置也给你。
+
+继续
+
+好，继续补上第 4 份：event_bus_rules.json（事件总线/自动化引擎）。
+这份文件是机器人“灵魂所在”：让它从菜单工具升级为自动运营系统——任务完成自动汇总、延期自动预警、资金审批自动入账、周报自动推送频道。
+
+4）event_bus_rules.json（事件触发器 + 自动化工作流）
+文件名：event_bus_rules.json
+
+{
+  "meta": {
+    "name": "event_bus_rules",
+    "version": "1.0.0",
+    "description": "Event-driven automation rules for Telegram internal ops bot"
+  },
+
+  "event_bus": {
+    "enabled": true,
+    "mode": "sync_with_async_queue",
+    "queue": "redis_stream",
+    "retry_policy": {
+      "max_retry": 3,
+      "backoff_seconds": [5, 30, 120]
+    }
+  },
+
+  "events": {
+    "TASK_CREATED": {
+      "description": "任务创建成功"
+    },
+    "TASK_UPDATED": {
+      "description": "任务字段更新（负责人/截止日期/优先级）"
+    },
+    "TASK_PROGRESS_UPDATED": {
+      "description": "任务进度更新"
+    },
+    "TASK_STATUS_CHANGED": {
+      "description": "任务状态变化（开始/暂停/完成）"
+    },
+    "TASK_OVERDUE": {
+      "description": "任务超期"
+    },
+
+    "REQ_CREATED": {
+      "description": "需求提交"
+    },
+    "REQ_APPROVED": {
+      "description": "需求批准"
+    },
+    "REQ_REJECTED": {
+      "description": "需求驳回"
+    },
+    "REQ_CONVERTED_TO_TASK": {
+      "description": "需求转任务"
+    },
+
+    "DOC_CREATED": {
+      "description": "文档归档"
+    },
+    "DOC_TAGGED": {
+      "description": "文档打标签"
+    },
+
+    "FIN_CREATED": {
+      "description": "财务记录创建"
+    },
+    "FIN_APPROVED": {
+      "description": "财务审批通过"
+    },
+    "FIN_REJECTED": {
+      "description": "财务审批驳回"
+    },
+
+    "PROJ_CREATED": {
+      "description": "项目创建"
+    },
+    "PROJ_STATUS_CHANGED": {
+      "description": "项目状态变化"
+    },
+    "PROJ_RISK_RAISED": {
+      "description": "项目风险登记"
+    },
+
+    "SCHEDULE_DAILY_0900": {
+      "description": "每天 09:00 定时事件"
+    },
+    "SCHEDULE_WEEKLY_MON_1000": {
+      "description": "每周一 10:00 定时事件"
+    },
+    "SCHEDULE_MONTHLY_0101": {
+      "description": "每月 1 日 10:00 定时事件"
+    }
+  },
+
+  "rules": [
+    {
+      "id": "R001_TASK_CREATED_NOTIFY_ASSIGNEE",
+      "name": "任务创建后通知负责人",
+      "enabled": true,
+      "trigger": {
+        "event": "TASK_CREATED"
+      },
+      "conditions": [
+        {
+          "field": "task.assignee_id",
+          "operator": "not_null"
+        }
+      ],
+      "actions": [
+        {
+          "type": "send_private_message",
+          "to": "{task.assignee_id}",
+          "template": "📌 你被指派了新任务：\n\n✅ #{task.id} {task.title}\n⏳ 截止：{task.due_date}\n📍 优先级：{task.priority}\n\n请在任务中心更新进度。",
+          "priority": "HIGH"
+        }
+      ],
+      "audit": true
+    },
+
+    {
+      "id": "R002_TASK_CREATED_SYNC_TO_PROJECT",
+      "name": "任务创建后自动计入项目进度",
+      "enabled": true,
+      "trigger": {
+        "event": "TASK_CREATED"
+      },
+      "conditions": [
+        {
+          "field": "task.project_id",
+          "operator": "not_null"
+        }
+      ],
+      "actions": [
+        {
+          "type": "update_project_metrics",
+          "project_id": "{task.project_id}",
+          "metrics": [
+            "task_total_count",
+            "task_active_count"
+          ]
+        }
+      ],
+      "audit": false
+    },
+
+    {
+      "id": "R003_TASK_DONE_PUSH_TO_CHANNEL",
+      "name": "任务完成推送频道（里程碑氛围）",
+      "enabled": true,
+      "trigger": {
+        "event": "TASK_STATUS_CHANGED"
+      },
+      "conditions": [
+        {
+          "field": "task.status",
+          "operator": "equals",
+          "value": "DONE"
+        },
+        {
+          "field": "project.channel_push_enabled",
+          "operator": "equals",
+          "value": true
+        }
+      ],
+      "actions": [
+        {
+          "type": "send_channel_message",
+          "channel_id": "{project.report_channel_id}",
+          "template": "🎯 交付达成\n\n✅ 任务完成：{task.title}\n👤 负责人：{task.assignee_name}\n📁 项目：{project.name}\n🕒 完成时间：{task.updated_at}\n\n让每一次完成，都成为团队的光。",
+          "format": "markdown"
+        }
+      ],
+      "audit": true
+    },
+
+    {
+      "id": "R004_TASK_OVERDUE_ALERT_PM",
+      "name": "任务超期自动预警 PM/管理员",
+      "enabled": true,
+      "trigger": {
+        "event": "TASK_OVERDUE"
+      },
+      "conditions": [
+        {
+          "field": "task.status",
+          "operator": "in",
+          "value": ["TODO", "DOING", "VERIFY"]
+        }
+      ],
+      "actions": [
+        {
+          "type": "send_group_message",
+          "group_id": "{task.group_id}",
+          "template": "🚨 超期预警\n\n任务 #{task.id} 已超期：{task.title}\n👤 负责人：{task.assignee_name}\n⏳ 原截止：{task.due_date}\n📍 当前状态：{task.status}\n\n请立即更新进度或申请延期。",
+          "format": "markdown"
+        },
+        {
+          "type": "notify_roles",
+          "roles": ["OWNER", "ADMIN", "PM"],
+          "template": "⚠️ 任务超期：#{task.id} {task.title}（负责人：{task.assignee_name}）"
+        }
+      ],
+      "audit": true
+    },
+
+    {
+      "id": "R005_REQ_CREATED_NOTIFY_PM",
+      "name": "需求提交后通知 PM/管理员进入评审",
+      "enabled": true,
+      "trigger": {
+        "event": "REQ_CREATED"
+      },
+      "actions": [
+        {
+          "type": "notify_roles",
+          "roles": ["OWNER", "ADMIN", "PM"],
+          "template": "📌 新需求待评审：#{req.id} {req.title}\n提交人：{req.creator_name}"
+        }
+      ],
+      "audit": true
+    },
+
+    {
+      "id": "R006_REQ_APPROVED_AUTO_CREATE_TASK_OPTION",
+      "name": "需求批准后自动提示生成任务",
+      "enabled": true,
+      "trigger": {
+        "event": "REQ_APPROVED"
+      },
+      "actions": [
+        {
+          "type": "send_group_message",
+          "group_id": "{req.group_id}",
+          "template": "🚀 需求已立项：{req.title}\n\n下一步建议：转为任务并分配负责人。",
+          "buttons": [
+            {
+              "text": "📌 转为任务",
+              "callback_data": "REQ:TOTASK:{req.id}"
+            }
+          ]
+        }
+      ],
+      "audit": true
+    },
+
+    {
+      "id": "R007_DOC_CREATED_SYNC_TO_PROJECT_KB",
+      "name": "文档归档后同步项目知识库统计",
+      "enabled": true,
+      "trigger": {
+        "event": "DOC_CREATED"
+      },
+      "conditions": [
+        {
+          "field": "doc.project_id",
+          "operator": "not_null"
+        }
+      ],
+      "actions": [
+        {
+          "type": "update_project_metrics",
+          "project_id": "{doc.project_id}",
+          "metrics": ["doc_count"]
+        }
+      ],
+      "audit": false
+    },
+
+    {
+      "id": "R008_FIN_CREATED_TO_APPROVAL_QUEUE",
+      "name": "财务记录提交后进入审核队列并通知财务",
+      "enabled": true,
+      "trigger": {
+        "event": "FIN_CREATED"
+      },
+      "conditions": [
+        {
+          "field": "fin.status",
+          "operator": "equals",
+          "value": "PENDING_APPROVAL"
+        }
+      ],
+      "actions": [
+        {
+          "type": "notify_roles",
+          "roles": ["OWNER", "ADMIN", "FINANCE"],
+          "template": "💰 新报销/支出待审核：#{fin.id}\n金额：{fin.amount} {fin.currency}\n用途：{fin.purpose}\n提交人：{fin.creator_name}"
+        }
+      ],
+      "audit": true
+    },
+
+    {
+      "id": "R009_FIN_APPROVED_WRITE_LEDGER",
+      "name": "财务审批通过后写入正式台账并生成凭证编号",
+      "enabled": true,
+      "trigger": {
+        "event": "FIN_APPROVED"
+      },
+      "actions": [
+        {
+          "type": "generate_serial_number",
+          "target": "fin.ledger_serial",
+          "format": "LEDGER-{YYYY}{MM}-{SEQ4}"
+        },
+        {
+          "type": "write_ledger",
+          "ledger": "MAIN",
+          "record_id": "{fin.id}"
+        },
+        {
+          "type": "send_private_message",
+          "to": "{fin.creator_id}",
+          "template": "✅ 你的报销/支出已审核通过。\n\n流水号：{fin.ledger_serial}\n金额：{fin.amount} {fin.currency}\n用途：{fin.purpose}\n\n每一笔钱，都将留下光的轨迹。"
+        }
+      ],
+      "audit": true
+    },
+
+    {
+      "id": "R010_FIN_REJECTED_NOTIFY_CREATOR",
+      "name": "财务驳回后通知提交人并要求补充材料",
+      "enabled": true,
+      "trigger": {
+        "event": "FIN_REJECTED"
+      },
+      "actions": [
+        {
+          "type": "send_private_message",
+          "to": "{fin.creator_id}",
+          "template": "❌ 你的财务申请已被驳回。\n\n记录 #{fin.id}\n原因：{fin.audit_notes}\n\n请补充凭证或调整用途说明后重新提交。"
+        }
+      ],
+      "audit": true
+    },
+
+    {
+      "id": "R011_PROJ_RISK_RAISED_ALERT",
+      "name": "项目风险登记后自动推送风险预警",
+      "enabled": true,
+      "trigger": {
+        "event": "PROJ_RISK_RAISED"
+      },
+      "actions": [
+        {
+          "type": "send_group_message",
+          "group_id": "{project.group_id}",
+          "template": "⚠️ 项目风险预警\n\n📁 项目：{project.name}\n📌 风险：{risk.title}\n🧩 描述：{risk.description}\n👤 提交人：{risk.creator_name}\n\n建议立即评估影响并设定应对措施。",
+          "format": "markdown"
+        },
+        {
+          "type": "notify_roles",
+          "roles": ["OWNER", "ADMIN", "PM"],
+          "template": "⚠️ 项目风险：{project.name} | {risk.title}"
+        }
+      ],
+      "audit": true
+    },
+
+    {
+      "id": "R012_DAILY_MORNING_SUMMARY",
+      "name": "每日 09:00 推送今日待办（个人维度）",
+      "enabled": true,
+      "trigger": {
+        "event": "SCHEDULE_DAILY_0900"
+      },
+      "actions": [
+        {
+          "type": "broadcast_personal_todo",
+          "target_roles": ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER"],
+          "template": "🌅 今日待办清单\n\n{todo_list}\n\n请用行动回应时间。",
+          "max_items": 8
+        }
+      ],
+      "audit": false
+    },
+
+    {
+      "id": "R013_WEEKLY_REPORT_PUSH_CHANNEL",
+      "name": "每周一 10:00 自动生成周报并推送频道",
+      "enabled": true,
+      "trigger": {
+        "event": "SCHEDULE_WEEKLY_MON_1000"
+      },
+      "actions": [
+        {
+          "type": "generate_weekly_report",
+          "scope": "ALL_PROJECTS",
+          "output": "markdown"
+        },
+        {
+          "type": "send_channel_message",
+          "channel_id": "{system.default_report_channel_id}",
+          "template": "📊 团队周报（自动生成）\n\n{weekly_report}\n\n愿每一周，都能看见增长的方向。",
+          "format": "markdown"
+        }
+      ],
+      "audit": true
+    },
+
+    {
+      "id": "R014_MONTHLY_FIN_REPORT_PUSH",
+      "name": "每月 1 日自动生成资金月报推送管理频道",
+      "enabled": true,
+      "trigger": {
+        "event": "SCHEDULE_MONTHLY_0101"
+      },
+      "actions": [
+        {
+          "type": "generate_fin_monthly_report",
+          "scope": "ALL",
+          "mask_sensitive": true,
+          "output": "markdown"
+        },
+        {
+          "type": "send_channel_message",
+          "channel_id": "{system.finance_report_channel_id}",
+          "template": "💰 资金月度简报（脱敏）\n\n{fin_monthly_report}\n\n数据是沉默的账本，也是决策的灯塔。",
+          "format": "markdown"
+        }
+      ],
+      "audit": true
+    }
+  ],
+
+  "templates": {
+    "todo_list_item": "- {index}. #{task_id} {title}（截止：{due_date}）",
+    "weekly_report_section_project": "📁 {project_name}\n- 完成任务：{done_count}\n- 新增需求：{req_new_count}\n- 风险事件：{risk_count}\n- 本周资金：{fin_delta}\n",
+    "monthly_fin_report": "收入：{income_total}\n支出：{expense_total}\n净流：{net_flow}\n\nTop 支出项目：\n{top_expense_projects}"
+  },
+
+  "rate_limit": {
+    "send_private_message": {
+      "max_per_minute": 20
+    },
+    "send_group_message": {
+      "max_per_minute": 30
+    },
+    "send_channel_message": {
+      "max_per_minute": 10
+    }
+  }
+}
+
+
+你现在拥有的“中台自动化能力”是什么？
+这份事件配置让机器人具备：
+	•	任务创建 → 自动通知负责人
+	•	任务完成 → 自动推送频道形成激励闭环
+	•	任务超期 → 自动预警 + 责任上浮
+	•	需求提交 → 自动进入评审队列
+	•	财务提交 → 自动通知财务审核
+	•	财务通过 → 自动写入台账 + 编流水号
+	•	每日待办推送
+	•	周报/月报自动生成并推送频道
+	•	风险登记 → 自动预警管理层
+它不再只是“工具”，而是一个组织节奏发动机。
+
+如果你还要继续往企业级打磨，我建议补第 5 份：
+✅ data_schema.json（数据库字段规范 + 状态枚举 + 统一字典） 这份能让开发团队避免“字段随便加、状态乱飞、后期难维护”。
+你一句话，我继续补齐。
+
+继续补齐
+
+收到，继续补齐第 5 份：data_schema.json（数据字典 + 状态枚举 + 字段规范）。
+这份文件是“数据库与业务一致性”的底座，能保证后期不会出现：同一状态写三种、同一金额字段有的叫 money 有的叫 amount 这种灾难。
+
+5）data_schema.json（数据字典 / 状态机 / 字段标准）
+文件名：data_schema.json
+
+{
+  "meta": {
+    "name": "data_schema",
+    "version": "1.0.0",
+    "description": "Unified Data Dictionary + Enums + Status Machines"
+  },
+
+  "naming_convention": {
+    "table": "snake_case_plural",
+    "field": "snake_case",
+    "enum": "UPPER_SNAKE_CASE",
+    "id_field": "id",
+    "foreign_key_suffix": "_id",
+    "timestamp_fields": ["created_at", "updated_at", "deleted_at"],
+    "timezone": "UTC"
+  },
+
+  "common_fields": {
+    "id": {
+      "type": "uuid",
+      "primary_key": true,
+      "description": "全局唯一 ID"
+    },
+    "created_at": {
+      "type": "datetime",
+      "description": "创建时间"
+    },
+    "updated_at": {
+      "type": "datetime",
+      "description": "更新时间"
+    },
+    "deleted_at": {
+      "type": "datetime",
+      "nullable": true,
+      "description": "软删除时间"
+    },
+    "created_by": {
+      "type": "bigint",
+      "description": "Telegram user_id"
+    }
+  },
+
+  "enums": {
+    "TASK_STATUS": {
+      "TODO": "待办",
+      "DOING": "进行中",
+      "VERIFY": "待验收",
+      "DONE": "已完成",
+      "PAUSED": "暂停",
+      "ARCHIVED": "已归档"
+    },
+
+    "TASK_PRIORITY": {
+      "HIGH": "高",
+      "MEDIUM": "中",
+      "LOW": "低"
+    },
+
+    "REQ_STATUS": {
+      "PENDING": "待评审",
+      "APPROVED": "已立项",
+      "REJECTED": "已驳回",
+      "CONVERTED": "已转任务",
+      "ARCHIVED": "已归档"
+    },
+
+    "PROJ_STATUS": {
+      "INIT": "启动中",
+      "ACTIVE": "进行中",
+      "RISK": "风险中",
+      "PAUSED": "暂停",
+      "DONE": "已完结",
+      "ARCHIVED": "已归档"
+    },
+
+    "DOC_CATEGORY": {
+      "POLICY": "制度流程",
+      "PROJECT": "项目资料",
+      "MINUTES": "会议纪要",
+      "KNOWLEDGE": "知识沉淀",
+      "FINANCE": "财务凭证",
+      "OTHER": "其他"
+    },
+
+    "FIN_TYPE": {
+      "INCOME": "收入",
+      "EXPENSE": "支出",
+      "REIMBURSEMENT": "报销"
+    },
+
+    "FIN_STATUS": {
+      "DRAFT": "草稿",
+      "PENDING_APPROVAL": "待审核",
+      "APPROVED": "已通过",
+      "REJECTED": "已驳回",
+      "ARCHIVED": "已归档"
+    },
+
+    "CURRENCY": {
+      "CNY": "人民币",
+      "USD": "美元",
+      "USDT": "泰达币"
+    },
+
+    "USER_ROLE": {
+      "OWNER": "Owner",
+      "ADMIN": "Admin",
+      "PM": "PM",
+      "FINANCE": "Finance",
+      "MEMBER": "Member",
+      "GUEST": "Guest"
+    },
+
+    "AUDIT_LEVEL": {
+      "LOW": "低",
+      "MEDIUM": "中",
+      "HIGH": "高"
+    }
+  },
+
+  "state_machines": {
+    "TASK_STATUS_FLOW": {
+      "initial": "TODO",
+      "transitions": {
+        "TODO": ["DOING", "PAUSED", "ARCHIVED"],
+        "DOING": ["VERIFY", "PAUSED", "DONE"],
+        "VERIFY": ["DONE", "DOING", "PAUSED"],
+        "DONE": ["ARCHIVED"],
+        "PAUSED": ["TODO", "DOING", "ARCHIVED"],
+        "ARCHIVED": []
+      }
+    },
+
+    "REQ_STATUS_FLOW": {
+      "initial": "PENDING",
+      "transitions": {
+        "PENDING": ["APPROVED", "REJECTED"],
+        "APPROVED": ["CONVERTED", "ARCHIVED"],
+        "REJECTED": ["PENDING", "ARCHIVED"],
+        "CONVERTED": ["ARCHIVED"],
+        "ARCHIVED": []
+      }
+    },
+
+    "FIN_STATUS_FLOW": {
+      "initial": "PENDING_APPROVAL",
+      "transitions": {
+        "DRAFT": ["PENDING_APPROVAL"],
+        "PENDING_APPROVAL": ["APPROVED", "REJECTED"],
+        "APPROVED": ["ARCHIVED"],
+        "REJECTED": ["PENDING_APPROVAL", "ARCHIVED"],
+        "ARCHIVED": []
+      }
+    },
+
+    "PROJ_STATUS_FLOW": {
+      "initial": "INIT",
+      "transitions": {
+        "INIT": ["ACTIVE", "PAUSED"],
+        "ACTIVE": ["RISK", "PAUSED", "DONE"],
+        "RISK": ["ACTIVE", "PAUSED"],
+        "PAUSED": ["ACTIVE", "DONE"],
+        "DONE": ["ARCHIVED"],
+        "ARCHIVED": []
+      }
+    }
+  },
+
+  "tables": {
+    "users": {
+      "description": "用户表（Telegram 用户）",
+      "fields": {
+        "id": { "type": "uuid", "primary_key": true },
+        "tg_user_id": { "type": "bigint", "unique": true },
+        "username": { "type": "string", "nullable": true },
+        "first_name": { "type": "string", "nullable": true },
+        "last_name": { "type": "string", "nullable": true },
+        "role": { "type": "enum", "enum_name": "USER_ROLE", "default": "MEMBER" },
+        "is_active": { "type": "boolean", "default": true },
+        "created_at": { "type": "datetime" },
+        "updated_at": { "type": "datetime" }
+      }
+    },
+
+    "groups": {
+      "description": "群组/频道绑定信息",
+      "fields": {
+        "id": { "type": "uuid", "primary_key": true },
+        "tg_chat_id": { "type": "bigint", "unique": true },
+        "chat_type": { "type": "string", "description": "group/supergroup/channel" },
+        "title": { "type": "string" },
+        "is_enabled": { "type": "boolean", "default": true },
+        "default_report_channel_id": { "type": "bigint", "nullable": true },
+        "finance_report_channel_id": { "type": "bigint", "nullable": true },
+        "created_at": { "type": "datetime" },
+        "updated_at": { "type": "datetime" }
+      }
+    },
+
+    "projects": {
+      "description": "项目表",
+      "fields": {
+        "id": { "type": "uuid", "primary_key": true },
+        "name": { "type": "string", "max_length": 150 },
+        "description": { "type": "text", "nullable": true },
+        "status": { "type": "enum", "enum_name": "PROJ_STATUS", "default": "INIT" },
+        "owner_id": { "type": "uuid", "ref": "users.id" },
+        "group_id": { "type": "uuid", "ref": "groups.id" },
+        "start_date": { "type": "date", "nullable": true },
+        "end_date": { "type": "date", "nullable": true },
+        "report_channel_id": { "type": "bigint", "nullable": true },
+        "channel_push_enabled": { "type": "boolean", "default": false },
+
+        "task_total_count": { "type": "int", "default": 0 },
+        "task_active_count": { "type": "int", "default": 0 },
+        "doc_count": { "type": "int", "default": 0 },
+
+        "created_at": { "type": "datetime" },
+        "updated_at": { "type": "datetime" }
+      }
+    },
+
+    "milestones": {
+      "description": "项目里程碑",
+      "fields": {
+        "id": { "type": "uuid", "primary_key": true },
+        "project_id": { "type": "uuid", "ref": "projects.id" },
+        "title": { "type": "string", "max_length": 150 },
+        "due_date": { "type": "date" },
+        "status": { "type": "string", "default": "ACTIVE" },
+        "created_at": { "type": "datetime" },
+        "updated_at": { "type": "datetime" }
+      }
+    },
+
+    "tasks": {
+      "description": "任务表",
+      "fields": {
+        "id": { "type": "uuid", "primary_key": true },
+        "serial_no": { "type": "string", "unique": true, "description": "任务编号，例如 T-202605-0001" },
+
+        "title": { "type": "string", "max_length": 120 },
+        "description": { "type": "text", "nullable": true },
+
+        "status": { "type": "enum", "enum_name": "TASK_STATUS", "default": "TODO" },
+        "priority": { "type": "enum", "enum_name": "TASK_PRIORITY", "default": "MEDIUM" },
+        "progress": { "type": "int", "default": 0, "description": "0-100" },
+
+        "project_id": { "type": "uuid", "ref": "projects.id", "nullable": true },
+        "assignee_id": { "type": "uuid", "ref": "users.id" },
+        "creator_id": { "type": "uuid", "ref": "users.id" },
+
+        "group_id": { "type": "uuid", "ref": "groups.id" },
+        "due_date": { "type": "date", "nullable": true },
+
+        "last_progress_update_at": { "type": "datetime", "nullable": true },
+
+        "created_at": { "type": "datetime" },
+        "updated_at": { "type": "datetime" },
+        "deleted_at": { "type": "datetime", "nullable": true }
+      }
+    },
+
+    "task_logs": {
+      "description": "任务日志表（审计与追踪）",
+      "fields": {
+        "id": { "type": "uuid", "primary_key": true },
+        "task_id": { "type": "uuid", "ref": "tasks.id" },
+        "actor_id": { "type": "uuid", "ref": "users.id" },
+        "action": { "type": "string", "description": "STATUS_CHANGE/PROGRESS_UPDATE/TRANSFER/COMMENT" },
+        "old_value": { "type": "text", "nullable": true },
+        "new_value": { "type": "text", "nullable": true },
+        "note": { "type": "text", "nullable": true },
+        "created_at": { "type": "datetime" }
+      }
+    },
+
+    "requirements": {
+      "description": "需求池表",
+      "fields": {
+        "id": { "type": "uuid", "primary_key": true },
+        "serial_no": { "type": "string", "unique": true, "description": "需求编号，例如 R-202605-0001" },
+
+        "title": { "type": "string", "max_length": 120 },
+        "background": { "type": "text" },
+        "acceptance": { "type": "text" },
+
+        "status": { "type": "enum", "enum_name": "REQ_STATUS", "default": "PENDING" },
+        "priority": { "type": "enum", "enum_name": "TASK_PRIORITY", "default": "MEDIUM" },
+
+        "creator_id": { "type": "uuid", "ref": "users.id" },
+        "reviewer_id": { "type": "uuid", "ref": "users.id", "nullable": true },
+
+        "project_id": { "type": "uuid", "ref": "projects.id", "nullable": true },
+        "group_id": { "type": "uuid", "ref": "groups.id" },
+
+        "due_date": { "type": "date", "nullable": true },
+
+        "created_at": { "type": "datetime" },
+        "updated_at": { "type": "datetime" },
+        "deleted_at": { "type": "datetime", "nullable": true }
+      }
+    },
+
+    "documents": {
+      "description": "文档库表",
+      "fields": {
+        "id": { "type": "uuid", "primary_key": true },
+        "serial_no": { "type": "string", "unique": true, "description": "文档编号，例如 D-202605-0001" },
+
+        "title": { "type": "string", "max_length": 150 },
+        "category": { "type": "enum", "enum_name": "DOC_CATEGORY", "default": "OTHER" },
+        "tags": { "type": "string", "nullable": true, "description": "逗号分隔标签" },
+
+        "file_type": { "type": "string", "nullable": true, "description": "pdf/png/docx/link..." },
+        "file_id": { "type": "string", "nullable": true, "description": "Telegram file_id 或 URL" },
+        "file_url": { "type": "string", "nullable": true },
+
+        "creator_id": { "type": "uuid", "ref": "users.id" },
+        "project_id": { "type": "uuid", "ref": "projects.id", "nullable": true },
+        "group_id": { "type": "uuid", "ref": "groups.id" },
+
+        "is_pinned": { "type": "boolean", "default": false },
+        "is_archived": { "type": "boolean", "default": false },
+
+        "created_at": { "type": "datetime" },
+        "updated_at": { "type": "datetime" },
+        "deleted_at": { "type": "datetime", "nullable": true }
+      }
+    },
+
+    "finance_records": {
+      "description": "财务流水表（支出/收入/报销）",
+      "fields": {
+        "id": { "type": "uuid", "primary_key": true },
+        "serial_no": { "type": "string", "unique": true, "description": "流水编号，例如 F-202605-0001" },
+        "ledger_serial": { "type": "string", "nullable": true, "description": "正式台账编号" },
+
+        "type": { "type": "enum", "enum_name": "FIN_TYPE", "default": "EXPENSE" },
+        "status": { "type": "enum", "enum_name": "FIN_STATUS", "default": "PENDING_APPROVAL" },
+
+        "amount": { "type": "decimal", "precision": 18, "scale": 2 },
+        "currency": { "type": "enum", "enum_name": "CURRENCY", "default": "CNY" },
+
+        "purpose": { "type": "string", "max_length": 500 },
+        "occur_date": { "type": "date" },
+
+        "project_id": { "type": "uuid", "ref": "projects.id", "nullable": true },
+        "group_id": { "type": "uuid", "ref": "groups.id" },
+
+        "creator_id": { "type": "uuid", "ref": "users.id" },
+        "auditor_id": { "type": "uuid", "ref": "users.id", "nullable": true },
+
+        "audit_notes": { "type": "text", "nullable": true },
+
+        "proof_file_id": { "type": "string", "nullable": true },
+        "proof_url": { "type": "string", "nullable": true },
+
+        "created_at": { "type": "datetime" },
+        "updated_at": { "type": "datetime" },
+        "deleted_at": { "type": "datetime", "nullable": true }
+      }
+    },
+
+    "approvals": {
+      "description": "审批流表（统一审批入口）",
+      "fields": {
+        "id": { "type": "uuid", "primary_key": true },
+
+        "object_type": { "type": "string", "description": "TASK/REQ/FIN/DOC" },
+        "object_id": { "type": "uuid" },
+
+        "status": { "type": "string", "default": "PENDING", "description": "PENDING/APPROVED/REJECTED" },
+
+        "requester_id": { "type": "uuid", "ref": "users.id" },
+        "approver_id": { "type": "uuid", "ref": "users.id", "nullable": true },
+
+        "notes": { "type": "text", "nullable": true },
+
+        "created_at": { "type": "datetime" },
+        "updated_at": { "type": "datetime" }
+      }
+    },
+
+    "audit_logs": {
+      "description": "审计日志表（不可篡改）",
+      "fields": {
+        "id": { "type": "uuid", "primary_key": true },
+        "actor_id": { "type": "uuid", "ref": "users.id", "nullable": true },
+        "action": { "type": "string" },
+        "object_type": { "type": "string", "nullable": true },
+        "object_id": { "type": "uuid", "nullable": true },
+        "route": { "type": "string", "nullable": true },
+        "ip": { "type": "string", "nullable": true },
+        "user_agent": { "type": "string", "nullable": true },
+        "payload": { "type": "json", "nullable": true },
+        "audit_level": { "type": "enum", "enum_name": "AUDIT_LEVEL", "default": "LOW" },
+        "created_at": { "type": "datetime" }
+      }
+    }
+  },
+
+  "indexes": {
+    "tasks": [
+      ["serial_no"],
+      ["assignee_id", "status"],
+      ["project_id", "status"],
+      ["due_date", "status"]
+    ],
+    "requirements": [
+      ["serial_no"],
+      ["status"],
+      ["priority"]
+    ],
+    "documents": [
+      ["category"],
+      ["project_id"],
+      ["is_archived"]
+    ],
+    "finance_records": [
+      ["serial_no"],
+      ["status"],
+      ["occur_date"],
+      ["project_id"]
+    ],
+    "audit_logs": [
+      ["created_at"],
+      ["action"],
+      ["object_type", "object_id"]
+    ]
+  },
+
+  "serial_number_rules": {
+    "TASK": {
+      "prefix": "T",
+      "format": "{PREFIX}-{YYYY}{MM}-{SEQ4}"
+    },
+    "REQ": {
+      "prefix": "R",
+      "format": "{PREFIX}-{YYYY}{MM}-{SEQ4}"
+    },
+    "DOC": {
+      "prefix": "D",
+      "format": "{PREFIX}-{YYYY}{MM}-{SEQ4}"
+    },
+    "FIN": {
+      "prefix": "F",
+      "format": "{PREFIX}-{YYYY}{MM}-{SEQ4}"
+    }
+  },
+
+  "validation_rules": {
+    "tasks.progress": {
+      "min": 0,
+      "max": 100
+    },
+    "finance_records.amount": {
+      "min": 0.01
+    },
+    "requirements.title": {
+      "max_length": 120
+    },
+    "documents.title": {
+      "max_length": 150
+    }
+  }
+}
+
+
+你现在的配置体系已经是“企业级五件套”
+截至目前，你已经拥有：
+	1	bot_menu_config.json（菜单 + 卡片 + 表单流）
+	2	permissions_policy.json（RBAC + 字段级权限 + 审计）
+	3	menu_rendering_rules.json（分页 + 动态列表 + 筛选）
+	4	event_bus_rules.json（自动化引擎 + 定时推送）
+	5	data_schema.json（数据字典 + 状态机 + 表结构）
+这套组合拳，已经可以直接孵化一个 Telegram 内部协作系统，具备“组织治理能力”。
+
+如果你还要继续走到“生产级交付”，下一步应该补第 6 份：
+✅ deployment_config.json（部署参数：数据库、Redis、备份策略、日志、环境变量规范、告警策略）
+你一句话，我继续补齐，把它推到真正能上线运营的程度。
+
+继续补齐
+
+好，继续补齐第 6 份：deployment_config.json（部署与生产参数规范）。
+这份文件决定系统能不能“跑得稳、活得久、扛得住”，它是从“能用”走向“可运营”的关键。
+
+6）deployment_config.json（生产部署配置 / 运维策略）
+文件名：deployment_config.json
+
+{
+  "meta": {
+    "name": "deployment_config",
+    "version": "1.0.0",
+    "description": "Production deployment configuration for TG internal ops bot"
+  },
+
+  "environment": {
+    "mode": "production",
+    "timezone": "Asia/Shanghai",
+    "default_language": "zh-CN"
+  },
+
+  "telegram": {
+    "bot_token_env": "TG_BOT_TOKEN",
+    "webhook": {
+      "enabled": false,
+      "url_env": "TG_WEBHOOK_URL",
+      "listen_host": "0.0.0.0",
+      "listen_port": 8443,
+      "secret_token_env": "TG_WEBHOOK_SECRET"
+    },
+    "polling": {
+      "enabled": true,
+      "interval_seconds": 1,
+      "drop_pending_updates": true
+    },
+    "limits": {
+      "max_callback_data_length": 64,
+      "max_message_length": 4096,
+      "max_inline_buttons_per_message": 90
+    }
+  },
+
+  "database": {
+    "engine": "postgresql",
+    "dsn_env": "DATABASE_URL",
+    "pool": {
+      "min": 5,
+      "max": 30,
+      "timeout_seconds": 30,
+      "recycle_seconds": 1800
+    },
+    "migration": {
+      "tool": "alembic",
+      "auto_run_on_boot": true
+    },
+    "backup": {
+      "enabled": true,
+      "schedule_cron": "0 3 * * *",
+      "retention_days": 14,
+      "storage": {
+        "type": "local",
+        "path": "/data/backups/postgres"
+      },
+      "encrypt": {
+        "enabled": true,
+        "key_env": "BACKUP_ENCRYPT_KEY"
+      }
+    }
+  },
+
+  "redis": {
+    "enabled": true,
+    "dsn_env": "REDIS_URL",
+    "usage": [
+      "state_machine_sessions",
+      "event_bus_queue",
+      "rate_limit",
+      "caching"
+    ],
+    "cache_ttl_seconds": {
+      "menus": 60,
+      "projects": 60,
+      "members": 300,
+      "reports": 600
+    }
+  },
+
+  "event_bus": {
+    "enabled": true,
+    "backend": "redis_stream",
+    "stream_name": "tg_ops_events",
+    "consumer_group": "tg_ops_consumers",
+    "max_pending": 5000,
+    "worker": {
+      "enabled": true,
+      "worker_count": 2,
+      "max_concurrency": 50
+    }
+  },
+
+  "scheduler": {
+    "enabled": true,
+    "engine": "apscheduler",
+    "jobs": [
+      {
+        "id": "daily_0900",
+        "cron": "0 9 * * *",
+        "event": "SCHEDULE_DAILY_0900"
+      },
+      {
+        "id": "weekly_mon_1000",
+        "cron": "0 10 * * 1",
+        "event": "SCHEDULE_WEEKLY_MON_1000"
+      },
+      {
+        "id": "monthly_0101",
+        "cron": "0 10 1 * *",
+        "event": "SCHEDULE_MONTHLY_0101"
+      }
+    ]
+  },
+
+  "storage": {
+    "file_storage": {
+      "type": "local",
+      "path": "/data/files",
+      "max_size_mb": 2048
+    },
+    "telegram_file_cache": {
+      "enabled": true,
+      "cache_path": "/data/tg_file_cache",
+      "retention_days": 30
+    }
+  },
+
+  "security": {
+    "secret_key_env": "APP_SECRET_KEY",
+    "encryption": {
+      "enabled": true,
+      "algorithm": "AES-256-GCM",
+      "key_env": "APP_ENCRYPT_KEY"
+    },
+    "admin_protection": {
+      "enable_owner_lock": true,
+      "owner_tg_user_id_env": "OWNER_TG_USER_ID"
+    },
+    "anti_abuse": {
+      "rate_limit": {
+        "enabled": true,
+        "default_per_minute": 30,
+        "per_route_override": {
+          "TASK:NEW": 10,
+          "REQ:NEW": 10,
+          "DOC:ADD": 10,
+          "FIN:REIMB": 5,
+          "FIN:OUT": 5,
+          "FIN:IN": 5,
+          "BI:PUSH": 5
+        }
+      },
+      "anti_spam": {
+        "enabled": true,
+        "block_suspicious_links": true,
+        "block_mass_mentions": true
+      }
+    },
+    "audit": {
+      "enabled": true,
+      "immutable_mode": true,
+      "log_sensitive_payload": false
+    }
+  },
+
+  "logging": {
+    "level": "INFO",
+    "format": "json",
+    "handlers": [
+      {
+        "type": "console",
+        "enabled": true
+      },
+      {
+        "type": "file",
+        "enabled": true,
+        "path": "/var/log/tg_ops_bot/app.log",
+        "rotate": {
+          "enabled": true,
+          "max_size_mb": 200,
+          "retention_files": 10
+        }
+      }
+    ],
+    "masking": {
+      "enabled": true,
+      "mask_fields": [
+        "bot_token",
+        "secret_key",
+        "encrypt_key",
+        "payer_account",
+        "internal_account"
+      ]
+    }
+  },
+
+  "monitoring": {
+    "health_check": {
+      "enabled": true,
+      "endpoint": "/health",
+      "include": ["db", "redis", "event_bus", "scheduler"]
+    },
+    "metrics": {
+      "enabled": true,
+      "engine": "prometheus",
+      "endpoint": "/metrics"
+    },
+    "alerting": {
+      "enabled": true,
+      "channels": [
+        {
+          "type": "telegram",
+          "chat_id_env": "ALERT_TG_CHAT_ID",
+          "min_level": "ERROR"
+        }
+      ],
+      "rules": [
+        {
+          "id": "db_down",
+          "condition": "db_connection_failed",
+          "severity": "CRITICAL",
+          "message": "🚨 数据库连接失败，系统已进入风险状态。"
+        },
+        {
+          "id": "redis_down",
+          "condition": "redis_connection_failed",
+          "severity": "HIGH",
+          "message": "⚠️ Redis 连接失败，状态机/事件队列可能异常。"
+        },
+        {
+          "id": "event_queue_overflow",
+          "condition": "event_bus_pending > 3000",
+          "severity": "HIGH",
+          "message": "⚠️ 事件队列积压严重，建议扩容 worker。"
+        }
+      ]
+    }
+  },
+
+  "reporting": {
+    "default_format": "markdown",
+    "export_formats": ["csv", "xlsx", "json"],
+    "channel_push": {
+      "enabled": true,
+      "mask_sensitive_finance": true
+    }
+  },
+
+  "integration": {
+    "ai_summary": {
+      "enabled": false,
+      "provider": "openai",
+      "api_key_env": "AI_API_KEY",
+      "features": [
+        "meeting_minutes_summary",
+        "weekly_report_summary",
+        "long_message_to_doc"
+      ]
+    },
+    "notion_sync": {
+      "enabled": false,
+      "token_env": "NOTION_TOKEN",
+      "database_id_env": "NOTION_DATABASE_ID"
+    }
+  },
+
+  "docker": {
+    "recommended": true,
+    "compose_file": "docker-compose.yml",
+    "services": [
+      "tg_ops_bot",
+      "postgres",
+      "redis"
+    ],
+    "volumes": [
+      "/data/files:/data/files",
+      "/data/backups:/data/backups",
+      "/var/log/tg_ops_bot:/var/log/tg_ops_bot"
+    ]
+  },
+
+  "release_strategy": {
+    "deployment": "rolling",
+    "blue_green_supported": true,
+    "rollback": {
+      "enabled": true,
+      "keep_last_versions": 3
+    }
+  },
+
+  "disaster_recovery": {
+    "enabled": true,
+    "rpo_minutes": 60,
+    "rto_minutes": 30,
+    "strategy": [
+      "daily_db_backup",
+      "weekly_full_backup",
+      "config_version_control",
+      "audit_log_immutable_storage"
+    ]
+  }
+}
+
+
+你现在已经具备“可上线”的完整体系
+这份配置让机器人具备生产级能力：
+	•	PostgreSQL + 备份策略 + 加密存储
+	•	Redis 状态机 + 事件队列
+	•	定时任务驱动日报/周报/月报
+	•	日志脱敏、审计不可篡改
+	•	监控指标 + Telegram 报警
+	•	Docker 化交付、可滚动升级、可回滚
+这就是企业系统的底盘。
+
+下一步建议（第 7 份，真正能交付开发团队）
+接下来补齐：
+✅ api_contract.json（接口契约/后端路由标准） 它能让前后端或机器人 handler 统一规范：每个 callback 对应哪个 service，返回结构是什么，错误码是什么。
+你一句话，我继续补齐，把这套体系打磨成“开发即上线”。
+
+继续补齐
+
+继续，补齐第 7 份：api_contract.json（接口契约 / 路由标准 / 返回结构 / 错误码体系）。
+这份文件的价值在于：开发团队不用“猜业务”，所有 callback、service、返回结构、错误码都标准化，系统从一开始就具备企业级可维护性。
+
+7）api_contract.json（接口契约 / 服务路由规范）
+文件名：api_contract.json
+
+{
+  "meta": {
+    "name": "api_contract",
+    "version": "1.0.0",
+    "description": "Service Contract & Callback Route Mapping for TG Ops Bot"
+  },
+
+  "global": {
+    "request_context": {
+      "required_fields": [
+        "tg_user_id",
+        "tg_chat_id",
+        "chat_type",
+        "message_id",
+        "callback_data",
+        "timestamp"
+      ],
+      "optional_fields": [
+        "username",
+        "language",
+        "client_platform"
+      ]
+    },
+
+    "response_standard": {
+      "success": {
+        "schema": {
+          "ok": true,
+          "code": "SUCCESS",
+          "message": "string",
+          "data": "object|null",
+          "ui": {
+            "type": "edit_message|send_message|send_private|send_channel",
+            "text": "string",
+            "format": "markdown|html|plain",
+            "keyboard": "inline_keyboard|null"
+          }
+        }
+      },
+      "error": {
+        "schema": {
+          "ok": false,
+          "code": "string",
+          "message": "string",
+          "detail": "string|null",
+          "ui": {
+            "type": "alert|toast|message",
+            "text": "string"
+          }
+        }
+      }
+    },
+
+    "id_format": {
+      "uuid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+      "serial_no_examples": {
+        "TASK": "T-202605-0001",
+        "REQ": "R-202605-0001",
+        "DOC": "D-202605-0001",
+        "FIN": "F-202605-0001"
+      }
+    }
+  },
+
+  "error_codes": {
+    "SUCCESS": "成功",
+
+    "ERR_NO_PERMISSION": "无权限",
+    "ERR_NOT_FOUND": "数据不存在",
+    "ERR_INVALID_PARAMS": "参数错误",
+    "ERR_INVALID_STATE": "状态不允许",
+    "ERR_EXPIRED_CALLBACK": "操作已过期",
+    "ERR_RATE_LIMIT": "请求过快",
+    "ERR_SYSTEM_BUSY": "系统繁忙",
+    "ERR_DB_FAILED": "数据库异常",
+    "ERR_REDIS_FAILED": "缓存异常",
+    "ERR_UPLOAD_FAILED": "上传失败",
+
+    "ERR_FIN_SENSITIVE_DENIED": "资金信息敏感拒绝访问",
+    "ERR_APPROVAL_REQUIRED": "需要审批",
+    "ERR_DUPLICATE_ACTION": "重复操作"
+  },
+
+  "services": {
+    "MenuService": {
+      "description": "菜单渲染与导航",
+      "methods": [
+        "render_menu",
+        "render_list_page",
+        "render_selector"
+      ]
+    },
+
+    "TaskService": {
+      "description": "任务业务逻辑",
+      "methods": [
+        "create_task",
+        "get_task",
+        "list_tasks",
+        "update_task_status",
+        "update_task_progress",
+        "transfer_task",
+        "archive_task"
+      ]
+    },
+
+    "RequirementService": {
+      "description": "需求业务逻辑",
+      "methods": [
+        "create_requirement",
+        "approve_requirement",
+        "reject_requirement",
+        "convert_to_task",
+        "list_requirements",
+        "get_requirement"
+      ]
+    },
+
+    "ProjectService": {
+      "description": "项目业务逻辑",
+      "methods": [
+        "create_project",
+        "list_projects",
+        "get_project",
+        "update_project_status",
+        "create_milestone",
+        "list_milestones",
+        "raise_risk"
+      ]
+    },
+
+    "DocumentService": {
+      "description": "文档归档业务",
+      "methods": [
+        "create_document",
+        "list_documents",
+        "search_documents",
+        "tag_document",
+        "link_document_project",
+        "archive_document",
+        "delete_document"
+      ]
+    },
+
+    "FinanceService": {
+      "description": "财务流水与审批",
+      "methods": [
+        "create_income",
+        "create_expense",
+        "create_reimbursement",
+        "list_pending_approvals",
+        "approve_finance_record",
+        "reject_finance_record",
+        "generate_monthly_report",
+        "get_finance_detail"
+      ]
+    },
+
+    "BIService": {
+      "description": "数据看板与报表",
+      "methods": [
+        "generate_daily_dashboard",
+        "generate_weekly_dashboard",
+        "generate_risk_report",
+        "generate_finance_summary",
+        "push_to_channel"
+      ]
+    },
+
+    "PermissionService": {
+      "description": "权限与角色管理",
+      "methods": [
+        "check_visible",
+        "check_executable",
+        "assign_role",
+        "list_members"
+      ]
+    },
+
+    "AuditService": {
+      "description": "审计日志",
+      "methods": [
+        "write_log",
+        "query_logs"
+      ]
+    },
+
+    "EventBusService": {
+      "description": "事件触发与异步任务",
+      "methods": [
+        "emit",
+        "consume",
+        "retry"
+      ]
+    }
+  },
+
+  "routes": {
+    "menus": {
+      "M:HOME": {
+        "service": "MenuService.render_menu",
+        "args": {
+          "menu_key": "M:HOME"
+        }
+      },
+      "M:PROJ": {
+        "service": "MenuService.render_menu",
+        "args": {
+          "menu_key": "M:PROJ"
+        }
+      },
+      "M:TASK": {
+        "service": "MenuService.render_menu",
+        "args": {
+          "menu_key": "M:TASK"
+        }
+      },
+      "M:REQ": {
+        "service": "MenuService.render_menu",
+        "args": {
+          "menu_key": "M:REQ"
+        }
+      },
+      "M:DOC": {
+        "service": "MenuService.render_menu",
+        "args": {
+          "menu_key": "M:DOC"
+        }
+      },
+      "M:FIN": {
+        "service": "MenuService.render_menu",
+        "args": {
+          "menu_key": "M:FIN"
+        }
+      },
+      "M:BI": {
+        "service": "MenuService.render_menu",
+        "args": {
+          "menu_key": "M:BI"
+        }
+      },
+      "M:MEM": {
+        "service": "MenuService.render_menu",
+        "args": {
+          "menu_key": "M:MEM"
+        }
+      },
+      "M:SET": {
+        "service": "MenuService.render_menu",
+        "args": {
+          "menu_key": "M:SET"
+        }
+      },
+      "M:SEARCH": {
+        "service": "MenuService.render_menu",
+        "args": {
+          "menu_key": "M:SEARCH"
+        }
+      }
+    },
+
+    "list_pages": {
+      "PROJ:LIST": {
+        "service": "MenuService.render_list_page",
+        "args": {
+          "route": "PROJ:LIST"
+        }
+      },
+      "TASK:MY": {
+        "service": "MenuService.render_list_page",
+        "args": {
+          "route": "TASK:MY"
+        }
+      },
+      "REQ:PENDING": {
+        "service": "MenuService.render_list_page",
+        "args": {
+          "route": "REQ:PENDING"
+        }
+      },
+      "FIN:APPROVALS": {
+        "service": "MenuService.render_list_page",
+        "args": {
+          "route": "FIN:APPROVALS"
+        }
+      }
+    },
+
+    "flows": {
+      "TASK:NEW": {
+        "service": "TaskService.create_task",
+        "flow_key": "TASK:NEW"
+      },
+      "REQ:NEW": {
+        "service": "RequirementService.create_requirement",
+        "flow_key": "REQ:NEW"
+      },
+      "DOC:ADD": {
+        "service": "DocumentService.create_document",
+        "flow_key": "DOC:ADD"
+      },
+      "FIN:REIMB": {
+        "service": "FinanceService.create_reimbursement",
+        "flow_key": "FIN:REIMB"
+      }
+    },
+
+    "cards": {
+      "TASK:OPEN:{id}": {
+        "service": "TaskService.get_task",
+        "args": {
+          "task_id": "{id}"
+        },
+        "ui_render": "task_card"
+      },
+
+      "TASK:START:{id}": {
+        "service": "TaskService.update_task_status",
+        "args": {
+          "task_id": "{id}",
+          "status": "DOING"
+        }
+      },
+
+      "TASK:PROG:{id}": {
+        "service": "TaskService.update_task_progress",
+        "args": {
+          "task_id": "{id}"
+        },
+        "requires_followup_input": true,
+        "followup_type": "progress_selector"
+      },
+
+      "TASK:DONE:{id}": {
+        "service": "TaskService.update_task_status",
+        "args": {
+          "task_id": "{id}",
+          "status": "DONE"
+        }
+      },
+
+      "TASK:ARCH:{id}": {
+        "service": "TaskService.archive_task",
+        "args": {
+          "task_id": "{id}"
+        }
+      },
+
+      "REQ:OPEN:{id}": {
+        "service": "RequirementService.get_requirement",
+        "args": {
+          "req_id": "{id}"
+        },
+        "ui_render": "req_card"
+      },
+
+      "REQ:APP:{id}": {
+        "service": "RequirementService.approve_requirement",
+        "args": {
+          "req_id": "{id}"
+        }
+      },
+
+      "REQ:REJ:{id}": {
+        "service": "RequirementService.reject_requirement",
+        "args": {
+          "req_id": "{id}"
+        },
+        "requires_followup_input": true,
+        "followup_type": "reject_reason_input"
+      },
+
+      "REQ:TOTASK:{id}": {
+        "service": "RequirementService.convert_to_task",
+        "args": {
+          "req_id": "{id}"
+        }
+      },
+
+      "DOC:OPEN:{id}": {
+        "service": "DocumentService.list_documents",
+        "args": {
+          "doc_id": "{id}"
+        },
+        "ui_render": "doc_card"
+      },
+
+      "DOC:TAG:{id}": {
+        "service": "DocumentService.tag_document",
+        "args": {
+          "doc_id": "{id}"
+        },
+        "requires_followup_input": true,
+        "followup_type": "tag_input"
+      },
+
+      "DOC:ARCH:{id}": {
+        "service": "DocumentService.archive_document",
+        "args": {
+          "doc_id": "{id}"
+        }
+      },
+
+      "DOC:DEL:{id}": {
+        "service": "DocumentService.delete_document",
+        "args": {
+          "doc_id": "{id}"
+        },
+        "requires_confirm": true,
+        "confirm_message": "⚠️ 确认删除该文档？删除后仅管理员可恢复。"
+      },
+
+      "FIN:DETAIL:{id}": {
+        "service": "FinanceService.get_finance_detail",
+        "args": {
+          "fin_id": "{id}"
+        },
+        "ui_render": "fin_card"
+      },
+
+      "FIN:PASS:{id}": {
+        "service": "FinanceService.approve_finance_record",
+        "args": {
+          "fin_id": "{id}"
+        },
+        "requires_followup_input": false
+      },
+
+      "FIN:FAIL:{id}": {
+        "service": "FinanceService.reject_finance_record",
+        "args": {
+          "fin_id": "{id}"
+        },
+        "requires_followup_input": true,
+        "followup_type": "reject_reason_input"
+      },
+
+      "BI:DAILY": {
+        "service": "BIService.generate_daily_dashboard",
+        "args": {
+          "scope": "GROUP"
+        }
+      },
+
+      "BI:WEEKLY": {
+        "service": "BIService.generate_weekly_dashboard",
+        "args": {
+          "scope": "GROUP"
+        }
+      },
+
+      "BI:REPORT": {
+        "service": "BIService.generate_weekly_dashboard",
+        "args": {
+          "scope": "ALL_PROJECTS"
+        }
+      },
+
+      "BI:PUSH": {
+        "service": "BIService.push_to_channel",
+        "args": {
+          "target": "default_report_channel"
+        },
+        "requires_followup_input": true,
+        "followup_type": "channel_selector"
+      }
+    }
+  },
+
+  "followup_inputs": {
+    "progress_selector": {
+      "type": "inline_buttons",
+      "prompt": "请选择进度：",
+      "options": [
+        { "text": "0%", "value": 0 },
+        { "text": "25%", "value": 25 },
+        { "text": "50%", "value": 50 },
+        { "text": "75%", "value": 75 },
+        { "text": "100%", "value": 100 }
+      ]
+    },
+
+    "reject_reason_input": {
+      "type": "text",
+      "prompt": "请输入驳回原因：",
+      "max_length": 500
+    },
+
+    "tag_input": {
+      "type": "text",
+      "prompt": "请输入标签（逗号分隔）：",
+      "max_length": 200
+    },
+
+    "channel_selector": {
+      "type": "select_from_system",
+      "source": "channels_bound",
+      "prompt": "请选择推送频道："
+    }
+  },
+
+  "web_api_optional": {
+    "enabled": false,
+    "base_path": "/api/v1",
+    "auth": {
+      "type": "jwt",
+      "jwt_secret_env": "JWT_SECRET"
+    }
+  }
+}
+
+
+你现在的体系已经能直接“交付研发”
+目前你已经有：
+	•	UI 配置（菜单/按钮/流程）
+	•	权限策略（RBAC + 字段级权限 + 审计等级）
+	•	动态渲染规则（分页、筛选、动态 selector）
+	•	自动化事件总线（日报周报月报 + 风险预警）
+	•	数据字典（表结构、状态机、索引）
+	•	部署配置（DB/Redis/监控/备份/告警）
+	•	接口契约（路由映射 + 返回结构 + 错误码）
+这不是机器人，这是一个组织协作产品。
+
+下一步（第 8 份，最终交付级别）
+建议补齐：
+✅ docker-compose.yml 标准模板 ✅ .env.example 环境变量模板 ✅ README_DEPLOY.md 一键部署说明
+这三样一补齐，你就能直接把机器人交给别人部署上线。
+你一句话，我把这套部署交付包也补齐。
+
+帮我补齐这套部署交付包
+
+下面直接给你补齐部署交付包三件套，拿去即可上线运营：
+	•	docker-compose.yml
+	•	.env.example
+	•	README_DEPLOY.md
+
+1）docker-compose.yml（标准生产部署）
+
+version: "3.9"
+
+services:
+  tg_ops_bot:
+    container_name: tg_ops_bot
+    image: tg_ops_bot:latest
+    restart: always
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./data/files:/data/files
+      - ./data/backups:/data/backups
+      - ./logs:/var/log/tg_ops_bot
+    ports:
+      - "8080:8080"
+    command: ["python", "main.py"]
+
+  postgres:
+    container_name: tg_ops_postgres
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_DB: tg_ops
+      POSTGRES_USER: tg_ops_user
+      POSTGRES_PASSWORD: tg_ops_password
+      TZ: Asia/Shanghai
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    container_name: tg_ops_redis
+    image: redis:7
+    restart: always
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - ./data/redis:/data
+    ports:
+      - "6379:6379"
+
+networks:
+  default:
+    name: tg_ops_network
+
+
+2）.env.example（环境变量模板）
+复制一份改名为 .env 即可使用。
+
+# ================================
+# Telegram Bot
+# ================================
+TG_BOT_TOKEN=YOUR_TELEGRAM_BOT_TOKEN
+OWNER_TG_USER_ID=123456789
+
+# Webhook (optional)
+TG_WEBHOOK_URL=
+TG_WEBHOOK_SECRET=
+
+# ================================
+# App Security
+# ================================
+APP_SECRET_KEY=CHANGE_THIS_SECRET_KEY
+APP_ENCRYPT_KEY=CHANGE_THIS_32BYTE_KEY
+
+# ================================
+# Database (PostgreSQL)
+# ================================
+DATABASE_URL=postgresql://tg_ops_user:tg_ops_password@postgres:5432/tg_ops
+
+# ================================
+# Redis
+# ================================
+REDIS_URL=redis://redis:6379/0
+
+# ================================
+# Backup Encryption
+# ================================
+BACKUP_ENCRYPT_KEY=CHANGE_THIS_BACKUP_KEY
+
+# ================================
+# Alerting (Send ERROR logs to Telegram chat)
+# ================================
+ALERT_TG_CHAT_ID=-1001234567890
+
+# ================================
+# Default Channels (optional)
+# ================================
+DEFAULT_REPORT_CHANNEL_ID=
+FINANCE_REPORT_CHANNEL_ID=
+
+# ================================
+# AI Provider (optional)
+# ================================
+AI_API_KEY=
+
+# ================================
+# Runtime
+# ================================
+APP_ENV=production
+APP_TIMEZONE=Asia/Shanghai
+LOG_LEVEL=INFO
+
+
+3）README_DEPLOY.md（一键部署说明书）
+
+# TG Internal Ops Bot - 部署说明
+
+这是一套 Telegram 内部协作中台机器人系统。
+支持：任务管理、需求池、项目管理、文档沉淀、资金台账、审批流、报表推送、自动化事件引擎。
+
+---
+
+## 1. 环境要求
+
+- Linux VPS / Server
+- Docker >= 20
+- Docker Compose >= 2
+- 推荐配置：2核4G / 50G硬盘（团队规模 30 人以内）
+
+---
+
+## 2. 部署文件结构建议
+
+建议目录：
+
+tg_ops_bot/
+├── docker-compose.yml
+├── .env
+├── config/
+│   ├── bot_menu_config.json
+│   ├── permissions_policy.json
+│   ├── menu_rendering_rules.json
+│   ├── event_bus_rules.json
+│   ├── data_schema.json
+│   ├── deployment_config.json
+│   └── api_contract.json
+├── data/
+│   ├── postgres/
+│   ├── redis/
+│   ├── files/
+│   └── backups/
+└── logs/
+
+---
+
+## 3. 配置环境变量
+
+复制模板：
+
+cp .env.example .env
+
+编辑 .env，至少填入：
+
+- TG_BOT_TOKEN
+- OWNER_TG_USER_ID
+- APP_SECRET_KEY
+- APP_ENCRYPT_KEY
+
+---
+
+## 4. 启动服务
+
+在 docker-compose.yml 同级目录执行：
+
+docker compose up -d
+
+检查运行：
+
+docker ps
+
+---
+
+## 5. 数据库迁移（首次部署必须执行）
+
+进入 bot 容器：
+
+docker exec -it tg_ops_bot bash
+
+执行迁移（示例 Alembic）：
+
+alembic upgrade head
+
+如果你没有集成 alembic，则需要手动执行 SQL 初始化。
+
+---
+
+## 6. 机器人上线验证
+
+在 Telegram 中：
+
+1. 搜索你的 Bot
+2. 输入 /start 或 /menu
+3. 应该出现「📌 内部协作控制台」
+
+如果菜单正常显示，说明系统运行成功。
+
+---
+
+## 7. 绑定群组与频道
+
+### 7.1 群组
+- 将机器人拉入群组
+- 给机器人管理员权限（至少允许发消息、置顶、删除）
+
+### 7.2 频道
+- 将机器人添加为频道管理员
+- 允许发消息
+
+---
+
+## 8. 配置报表推送频道（可选）
+
+在 .env 填：
+
+DEFAULT_REPORT_CHANNEL_ID=-100xxxxxxxxxx
+FINANCE_REPORT_CHANNEL_ID=-100xxxxxxxxxx
+
+重启：
+
+docker compose restart tg_ops_bot
+
+---
+
+## 9. 数据备份策略
+
+默认策略：
+- 每天 03:00 自动备份 PostgreSQL
+- 保留 14 天
+
+备份目录：
+
+./data/backups/postgres
+
+建议配合云盘/对象存储进行异地备份。
+
+---
+
+## 10. 日志查看
+
+查看实时日志：
+
+docker logs -f tg_ops_bot
+
+日志文件路径：
+
+./logs/app.log
+
+---
+
+## 11. 常见故障排查
+
+### 11.1 Bot 无响应
+检查 token：
+
+cat .env | grep TG_BOT_TOKEN
+
+检查容器：
+
+docker ps
+
+---
+
+### 11.2 PostgreSQL 连接失败
+检查 DATABASE_URL 是否写成：
+
+postgresql://user:pass@postgres:5432/tg_ops
+
+并确认 postgres 服务启动：
+
+docker logs -f tg_ops_postgres
+
+---
+
+### 11.3 Redis 连接失败
+检查 redis：
+
+docker logs -f tg_ops_redis
+
+---
+
+### 11.4 callback 失效
+Telegram callback_data 长度限制 64 字符，必须控制 ID 及 payload 长度。
+
+---
+
+## 12. 更新升级（推荐流程）
+
+拉取新镜像后：
+
+docker compose pull
+docker compose up -d
+
+如涉及数据库结构变更：
+
+docker exec -it tg_ops_bot alembic upgrade head
+
+---
+
+## 13. 安全建议（强烈推荐）
+
+- OWNER_TG_USER_ID 必须填写
+- 禁止把 .env 上传到公开仓库
+- 数据库端口建议只允许内网访问
+- 财务频道与运营频道分离
+- 开启审计日志 immutable_mode
+
+---
+
+## 14. 运营建议
+
+机器人价值不在功能，而在节奏：
+- 每天推送待办
+- 每周推送周报
+- 每月推送资金月报
+- 所有项目以里程碑驱动
+- 所有需求必须编号与归档
+
+当团队习惯被数据牵引，协作就会像流水线一样稳定。
+
+---
+
+部署完成后，你的 Telegram 将成为一个真正的内部操作系统。
+
+
+交付包补齐完成 ✅
+你现在已经拥有一整套可交付的企业级 TG 内部机器人系统文档与配置。
+如果你还要再往前一步，我建议补最后两件“产品级武器”：
+	•	INIT_SQL.sql（数据库初始化脚本）
+	•	SAMPLE_DATA.json（演示数据：项目/任务/资金/文档模板）
+这样你可以一键初始化演示环境，拉人进群直接用。

@@ -1,0 +1,1381 @@
+那我就直接给你最终可落库版本代码（4 个文件全量覆盖式输出）。你复制覆盖即可，能直接 tsc --build 过。
+
+下面开始。
+
+1) artifacts/api-server/src/bot/menus.ts
+import type { Context } from "telegraf";
+import { editOrSend, buildKeyboard } from "./helpers.js";
+import type { Role } from "./permissions.js";
+import { canAccess } from "./permissions.js";
+
+interface MenuButton {
+  text: string;
+  callback_data: string;
+  visible_roles: string;
+}
+
+const ALL_MENUS: Record<
+  string,
+  {
+    title: string;
+    description: string;
+    buttons: MenuButton[];
+    footer: { text: string; callback_data: string }[];
+  }
+> = {
+  "M:HOME": {
+    title: "📌 内部协作控制台",
+    description: "让任务有闭环，让项目有节奏，让资金有轨迹。",
+    buttons: [
+      { text: "📁 项目管理", callback_data: "M:PROJ", visible_roles: "ALL_USERS" },
+      { text: "✅ 任务中心", callback_data: "M:TASK", visible_roles: "ALL_USERS" },
+      { text: "📌 需求池", callback_data: "M:REQ", visible_roles: "ALL_USERS" },
+      { text: "📚 文档沉淀", callback_data: "M:DOC", visible_roles: "ALL_USERS" },
+      { text: "💰 资金动向", callback_data: "M:FIN", visible_roles: "FINANCE_OR_ADMIN" },
+      { text: "📊 数据看板", callback_data: "M:BI", visible_roles: "ALL_USERS" },
+      { text: "👥 成员/权限", callback_data: "M:MEM", visible_roles: "ADMIN_ONLY" },
+      { text: "⚙️ 系统设置", callback_data: "M:SET", visible_roles: "ADMIN_ONLY" },
+    ],
+    footer: [{ text: "🔍 搜索", callback_data: "M:SEARCH" }],
+  },
+
+  "M:PROJ": {
+    title: "📁 项目管理",
+    description: "以里程碑驱动进度，以指标锁定交付。",
+    buttons: [
+      { text: "➕ 新建项目", callback_data: "PROJ:NEW", visible_roles: "PM_OR_ADMIN" },
+      { text: "📋 项目列表", callback_data: "PROJ:LIST", visible_roles: "ALL_USERS" },
+      { text: "🎯 里程碑管理", callback_data: "PROJ:MILE", visible_roles: "PM_OR_ADMIN" },
+      { text: "⚠️ 风险/阻塞登记", callback_data: "PROJ:RISK", visible_roles: "ALL_USERS" },
+      { text: "📌 项目周报生成", callback_data: "PROJ:REPORT", visible_roles: "PM_OR_ADMIN" },
+    ],
+    footer: [{ text: "🔙 返回主页", callback_data: "M:HOME" }],
+  },
+
+  "M:TASK": {
+    title: "✅ 任务中心",
+    description: "把讨论变成行动，把行动变成结果。",
+    buttons: [
+      { text: "➕ 新建任务", callback_data: "TASK:NEW", visible_roles: "ALL_USERS" },
+      { text: "👤 我的任务", callback_data: "TASK:MY", visible_roles: "ALL_USERS" },
+      { text: "📌 今日待办", callback_data: "TASK:TODAY", visible_roles: "ALL_USERS" },
+      { text: "⏳ 即将到期", callback_data: "TASK:DUESOON", visible_roles: "ALL_USERS" },
+      { text: "🚨 超期任务", callback_data: "TASK:OVERDUE", visible_roles: "PM_OR_ADMIN" },
+      { text: "📂 已归档任务", callback_data: "TASK:ARCH", visible_roles: "PM_OR_ADMIN" },
+    ],
+    footer: [{ text: "🔙 返回主页", callback_data: "M:HOME" }],
+  },
+
+  "M:REQ": {
+    title: "📌 需求池",
+    description: "需求必须有编号、有结论、有归宿。",
+    buttons: [
+      { text: "➕ 发布需求", callback_data: "REQ:NEW", visible_roles: "ALL_USERS" },
+      { text: "📥 待评审需求", callback_data: "REQ:PENDING", visible_roles: "PM_OR_ADMIN" },
+      { text: "🚀 已立项需求", callback_data: "REQ:APPROVED", visible_roles: "ALL_USERS" },
+      { text: "❌ 已驳回需求", callback_data: "REQ:REJECTED", visible_roles: "PM_OR_ADMIN" },
+      { text: "🧾 需求统计", callback_data: "REQ:STATS", visible_roles: "PM_OR_ADMIN" },
+    ],
+    footer: [{ text: "🔙 返回主页", callback_data: "M:HOME" }],
+  },
+
+  "M:DOC": {
+    title: "📚 文档沉淀",
+    description: "把经验固化为资产，把知识沉淀为壁垒。",
+    buttons: [
+      { text: "➕ 上传文档", callback_data: "DOC:ADD", visible_roles: "ALL_USERS" },
+      { text: "📋 全部文档", callback_data: "DOC:LIST:ALL:0", visible_roles: "ALL_USERS" },
+      { text: "📌 置顶文档", callback_data: "DOC:LIST:PINNED:0", visible_roles: "ALL_USERS" },
+      { text: "👤 我上传的", callback_data: "DOC:LIST:MINE:0", visible_roles: "ALL_USERS" },
+      { text: "📂 分类目录", callback_data: "DOC:CATE", visible_roles: "ALL_USERS" },
+      { text: "📁 按项目浏览", callback_data: "DOC:LINKPROJ:0", visible_roles: "ALL_USERS" },
+      { text: "📝 会议纪要", callback_data: "DOC:MINUTES", visible_roles: "ALL_USERS" },
+      { text: "🔍 搜索文档", callback_data: "DOC:SEARCH", visible_roles: "ALL_USERS" },
+      { text: "🗄 已归档", callback_data: "DOC:LIST:ARCH:0", visible_roles: "PM_OR_ADMIN" },
+    ],
+    footer: [{ text: "🔙 返回主页", callback_data: "M:HOME" }],
+  },
+
+  "M:FIN": {
+    title: "💰 资金动向",
+    description: "每一笔钱都要可追溯，每一次支出都要可审计。",
+    buttons: [
+      { text: "➕ 录入收入", callback_data: "FIN:IN", visible_roles: "FINANCE_OR_ADMIN" },
+      { text: "➖ 录入支出", callback_data: "FIN:OUT", visible_roles: "FINANCE_OR_ADMIN" },
+      { text: "🧾 报销申请", callback_data: "FIN:REIMB", visible_roles: "ALL_USERS" },
+      { text: "⏳ 待审核", callback_data: "FIN:APPROVALS", visible_roles: "FINANCE_OR_ADMIN" },
+      { text: "📊 月度报表", callback_data: "FIN:MONTHLY", visible_roles: "FINANCE_OR_ADMIN" },
+      { text: "📂 按项目统计", callback_data: "FIN:BYPROJ", visible_roles: "FINANCE_OR_ADMIN" },
+    ],
+    footer: [{ text: "🔙 返回主页", callback_data: "M:HOME" }],
+  },
+
+  "M:BI": {
+    title: "📊 数据看板",
+    description: "让团队的节奏可视化，让风险提前暴露。",
+    buttons: [
+      { text: "📌 今日概览", callback_data: "BI:DAILY", visible_roles: "ALL_USERS" },
+      { text: "👤 我的看板", callback_data: "BI:MINE", visible_roles: "ALL_USERS" },
+      { text: "📅 本周进度", callback_data: "BI:WEEKLY", visible_roles: "ALL_USERS" },
+      { text: "📊 项目健康", callback_data: "BI:HEALTH", visible_roles: "PM_OR_ADMIN" },
+      { text: "⚠️ 风险预警", callback_data: "BI:RISK", visible_roles: "PM_OR_ADMIN" },
+      { text: "💰 月度资金流", callback_data: "BI:FIN", visible_roles: "FINANCE_OR_ADMIN" },
+      { text: "🧾 自动生成周报", callback_data: "BI:REPORT", visible_roles: "PM_OR_ADMIN" },
+      { text: "📢 推送看板", callback_data: "BI:PUSH", visible_roles: "ADMIN_ONLY" },
+      { text: "📅 立即推送提醒", callback_data: "BI:DIGEST", visible_roles: "ADMIN_ONLY" },
+    ],
+    footer: [{ text: "🔙 返回主页", callback_data: "M:HOME" }],
+  },
+
+  "M:MEM": {
+    title: "👥 成员/权限",
+    description: "用角色定义边界，用权限守住秩序。",
+    buttons: [
+      { text: "👤 成员列表", callback_data: "MEM:LIST", visible_roles: "ADMIN_ONLY" },
+      { text: "🧩 角色分配", callback_data: "MEM:ROLE", visible_roles: "ADMIN_ONLY" },
+      { text: "🛡 权限策略", callback_data: "MEM:POLICY", visible_roles: "ADMIN_ONLY" },
+      { text: "📌 黑名单/白名单", callback_data: "MEM:ACL", visible_roles: "ADMIN_ONLY" },
+    ],
+    footer: [{ text: "🔙 返回主页", callback_data: "M:HOME" }],
+  },
+
+  "M:SET": {
+    title: "⚙️ 系统设置",
+    description: "系统不是工具，是组织的规则引擎。",
+    buttons: [
+      { text: "⏰ 提醒策略", callback_data: "SET:REMIND", visible_roles: "ADMIN_ONLY" },
+      { text: "🏷 标签体系", callback_data: "SET:TAGS", visible_roles: "ADMIN_ONLY" },
+      { text: "📌 默认模板", callback_data: "SET:TEMPLATE", visible_roles: "ADMIN_ONLY" },
+      { text: "🗃 数据导出", callback_data: "SET:EXPORT", visible_roles: "ADMIN_ONLY" },
+      { text: "💾 自动备份", callback_data: "SET:BACKUP", visible_roles: "ADMIN_ONLY" },
+      { text: "🧾 审计日志", callback_data: "SET:AUDIT", visible_roles: "ADMIN_ONLY" },
+      { text: "🗑 回收站", callback_data: "M:TRASH", visible_roles: "ADMIN_ONLY" },
+    ],
+    footer: [{ text: "🔙 返回主页", callback_data: "M:HOME" }],
+  },
+
+  "M:TRASH": {
+    title: "🗑 回收站",
+    description: "查看与恢复已软删的记录。彻底删除暂未开放。",
+    buttons: [
+      { text: "✅ 任务", callback_data: "TRASH:LIST:TASK:0", visible_roles: "ADMIN_ONLY" },
+      { text: "📌 需求", callback_data: "TRASH:LIST:REQ:0", visible_roles: "ADMIN_ONLY" },
+      { text: "💰 财务", callback_data: "TRASH:LIST:FIN:0", visible_roles: "ADMIN_ONLY" },
+      { text: "📚 文档", callback_data: "TRASH:LIST:DOC:0", visible_roles: "ADMIN_ONLY" },
+      { text: "📁 项目", callback_data: "TRASH:LIST:PROJ:0", visible_roles: "ADMIN_ONLY" },
+    ],
+    footer: [
+      { text: "🔙 返回系统设置", callback_data: "M:SET" },
+      { text: "🏠 返回主页", callback_data: "M:HOME" },
+    ],
+  },
+};
+
+export async function showMenu(ctx: Context, menuKey: string, role: Role): Promise<void> {
+  const menu = ALL_MENUS[menuKey];
+  if (!menu) {
+    await ctx.reply("⚠️ 菜单不存在");
+    return;
+  }
+
+  const visibleButtons = menu.buttons
+    .filter((b) => canAccess(role, b.visible_roles))
+    .map((b) => ({ text: b.text, callback_data: b.callback_data }));
+
+  const keyboard = buildKeyboard(visibleButtons, 2, menu.footer);
+  const text = `<b>${menu.title}</b>\n<i>${menu.description}</i>`;
+  await editOrSend(ctx, text, keyboard);
+}
+2) artifacts/api-server/src/bot/index.ts
+
+你贴的版本已经是“最终形态”，我这里按可直接覆盖输出（与现有一致，不引入额外依赖）。
+
+import { Telegraf } from "telegraf";
+import { logger } from "../lib/logger.js";
+import { getOrCreateUser, getUserByTelegramId } from "./user-service.js";
+import { getSession, clearSession, saveSession } from "./session.js";
+import { showMenu } from "./menus.js";
+import { startFlow, handleFormText, handleFormSelect } from "./form-handler.js";
+import { startSearch, handleSearch } from "./search.js";
+import type { Role } from "./permissions.js";
+import { canExecuteAction } from "./permissions.js";
+
+import {
+  showMyTasks,
+  showTodayTasks,
+  showDueSoonTasks,
+  showOverdueTasks,
+  showArchivedTasks,
+  showTaskCard,
+  handleTaskAction,
+  startTaskFlow,
+  showProgressMenu,
+  showDelayMenu,
+  showAssigneePicker,
+  showProjectPicker,
+} from "./handlers/tasks.js";
+
+import {
+  showProjectList,
+  showProjectCard,
+  showProjectReport,
+  showProjectTasks,
+  showProjectMilestones,
+  showProjectRisks,
+  handleProjectStatus,
+  handleProjectArchive,
+  handleProjectDelete,
+  handleMilestoneDone,
+  startMilestoneFlow,
+  startProjectRiskFlow,
+  showMilestonesEntry,
+} from "./handlers/projects.js";
+
+import {
+  showPendingReqs,
+  showApprovedReqs,
+  showRejectedReqs,
+  showReqStats,
+  showReqCard,
+  handleReqAction,
+  showReqList,
+  startReqFlow,
+  startReqReview,
+  showReqProjectPicker,
+} from "./handlers/requirements.js";
+
+import {
+  showPendingApprovals,
+  showMonthlyReport,
+  showByProject,
+  showFinCard,
+  handleFinAction,
+  showFinList,
+  startFinFlow,
+  startFinReview,
+  showFinProjectPicker,
+} from "./handlers/finance.js";
+
+import {
+  showDocCategories,
+  showDocsByCategory,
+  showMeetingMinutes,
+  showArchivedDocs,
+  showDocCard,
+  handleDocAction,
+  showDocList,
+  showDocsByProjectPicker,
+  showDocsByProject,
+  showDocCategoryPicker,
+  showDocProjectPicker,
+  startDocAddFlow,
+  startDocTagsFlow,
+  startDocPurgeFlow,
+} from "./handlers/documents.js";
+
+import {
+  showDailyOverview,
+  showWeeklyProgress,
+  showRiskAlert,
+  showMonthlyFinBI,
+  generateWeeklyReport,
+  pushDashboardToChannel,
+  pushDashboardToGroup,
+  showMyDashboard,
+  showProjectHealth,
+  showPushMenu,
+} from "./handlers/bi.js";
+
+import {
+  showMemberList,
+  showAclPanel,
+  handleMemberAction,
+  showUserCard,
+  showRoleHub,
+  showPolicyMatrix,
+  startMemberSearch,
+  runMemberSearch,
+} from "./handlers/members.js";
+
+import {
+  showAuditLog,
+  showReminderPolicy,
+  handleReminderEdit,
+  showExportPanel,
+  handleExport,
+  showTagSystem,
+  showBackupPanel,
+  showSettingsPlaceholder,
+} from "./handlers/settings.js";
+
+import { showTrashList, handleTrashRestore, isTrashType } from "./handlers/trash.js";
+
+export function createBot(token: string): Telegraf {
+  const bot = new Telegraf(token);
+
+  async function getRole(telegramId: string): Promise<Role> {
+    const user = await getUserByTelegramId(telegramId);
+    return (user?.role as Role) ?? "GUEST";
+  }
+
+  async function isBlacklisted(telegramId: string): Promise<boolean> {
+    const user = await getUserByTelegramId(telegramId);
+    return user?.isBlacklisted === 1;
+  }
+
+  const HELP_TEXT = `🤖 <b>得力助手 命令说明</b>
+
+/menu - 打开主控面板（仅私聊）
+/help - 查看帮助
+/cancel - 取消当前操作
+/chatid - 查看当前会话 ID（用于配置群组/频道）
+
+💡 <b>使用建议</b>
+• 私聊机器人进行所有操作（创建任务、查看数据等）
+• 把机器人加入团队群，新建任务/项目/财务记录会自动播报到群
+• 数据看板可以一键推送到频道做对外公告`;
+
+  bot.start(async (ctx) => {
+    const from = ctx.from;
+    if (!from) return;
+    const telegramId = String(from.id);
+
+    if (await isBlacklisted(telegramId)) {
+      if (ctx.chat.type === "private") await ctx.reply("🚫 你已被列入黑名单，无法使用此系统。");
+      return;
+    }
+
+    if (ctx.chat.type !== "private") {
+      const username = ctx.botInfo?.username;
+      const link = username ? `https://t.me/${username}` : "私聊我";
+      await ctx.reply(`👋 你好！请<a href="${link}">私聊我</a>使用完整功能。`, {
+        parse_mode: "HTML",
+        link_preview_options: { is_disabled: true },
+      });
+      return;
+    }
+
+    await getOrCreateUser(telegramId, from.username, from.first_name, from.last_name);
+    const role = await getRole(telegramId);
+    await showMenu(ctx, "M:HOME", role);
+  });
+
+  bot.command("menu", async (ctx) => {
+    if (ctx.chat.type !== "private") {
+      await ctx.reply("👋 请私聊我使用菜单功能");
+      return;
+    }
+    const telegramId = String(ctx.from?.id ?? "");
+    if (await isBlacklisted(telegramId)) {
+      await ctx.reply("🚫 你已被列入黑名单，无法使用此系统。");
+      return;
+    }
+    await getOrCreateUser(telegramId, ctx.from?.username, ctx.from?.first_name, ctx.from?.last_name);
+    const role = await getRole(telegramId);
+    await showMenu(ctx, "M:HOME", role);
+  });
+
+  bot.command("help", async (ctx) => {
+    await ctx.reply(HELP_TEXT, { parse_mode: "HTML" });
+  });
+
+  bot.command("chatid", async (ctx) => {
+    const chat = ctx.chat;
+    if (!chat) return;
+    await ctx.reply(`Chat ID: <code>${chat.id}</code>\nType: ${chat.type}`, { parse_mode: "HTML" });
+    logger.info({ chatId: chat.id, type: chat.type, title: "title" in chat ? chat.title : null }, "chatid command");
+  });
+
+  bot.on("my_chat_member", async (ctx) => {
+    const chat = ctx.chat;
+    logger.info(
+      { chatId: chat.id, type: chat.type, title: "title" in chat ? chat.title : null, status: ctx.myChatMember.new_chat_member.status },
+      "Bot membership changed",
+    );
+  });
+
+  bot.command("digest", async (ctx) => {
+    if (ctx.chat.type !== "private") {
+      await ctx.reply("⚠️ 请私聊机器人使用 /digest。");
+      return;
+    }
+    const telegramId = String(ctx.from?.id ?? "");
+    if (await isBlacklisted(telegramId)) {
+      await ctx.reply("🚫 你已被列入黑名单，无法使用此系统。");
+      return;
+    }
+    const role = await getRole(telegramId);
+    if (role !== "OWNER" && role !== "ADMIN") {
+      await ctx.reply("⛔ 仅 OWNER / ADMIN 可手动触发每日提醒。");
+      return;
+    }
+    const { sendDailyDigest, buildDailyDigest } = await import("./reminders.js");
+    const text = await buildDailyDigest();
+    if (!text) {
+      await ctx.reply("✅ 当前无逾期 / 今日截止 / 待审事项，无需推送。");
+      return;
+    }
+    await ctx.reply(`👁 <b>预览</b>（仅你可见）\n\n${text}`, { parse_mode: "HTML" });
+    const result = await sendDailyDigest(ctx.telegram);
+    const groupLine = result.groupSent ? "📣 已推送到协作群" : "⚠️ 协作群未配置或推送失败";
+    const dmLine = `📨 个人推送：${result.dmCount} 人${result.dmSkipped > 0 ? `（${result.dmSkipped} 人未触达，可能未启动 Bot）` : ""}`;
+    await ctx.reply(`${groupLine}\n${dmLine}`);
+  });
+
+  bot.command("cancel", async (ctx) => {
+    const telegramId = String(ctx.from?.id ?? "");
+    await clearSession(telegramId);
+    await ctx.reply("❌ 已取消当前操作");
+    if (ctx.chat.type === "private") {
+      const role = await getRole(telegramId);
+      await showMenu(ctx, "M:HOME", role);
+    }
+  });
+
+  bot.on("text", async (ctx) => {
+    if (ctx.chat.type !== "private") return;
+    const telegramId = String(ctx.from?.id ?? "");
+    if (await isBlacklisted(telegramId)) return;
+    await getOrCreateUser(telegramId, ctx.from?.username, ctx.from?.first_name, ctx.from?.last_name);
+
+    const session = await getSession(telegramId);
+    const role = await getRole(telegramId);
+    const text = ctx.message.text;
+
+    if (session.state === "form") {
+      if (session.flow === "SEARCH") {
+        await handleSearch(ctx, text);
+        return;
+      }
+      if (session.flow === "MEM:SEARCH") {
+        await clearSession(telegramId);
+        await runMemberSearch(ctx, text);
+        return;
+      }
+      const handled = await handleFormText(ctx, text, role);
+      if (!handled) {
+        await ctx.reply("⚠️ 请通过按钮选择，或发送 /cancel 取消");
+      }
+      return;
+    }
+
+    await ctx.reply("💡 发送 /menu 打开主控面板，/help 查看帮助");
+  });
+
+  bot.on("callback_query", async (ctx) => {
+    if (!("data" in ctx.callbackQuery)) return;
+    const data = ctx.callbackQuery.data;
+    const telegramId = String(ctx.from?.id ?? "");
+
+    if (await isBlacklisted(telegramId)) {
+      await ctx.answerCbQuery("🚫 你已被列入黑名单", { show_alert: true });
+      return;
+    }
+
+    await getOrCreateUser(telegramId, ctx.from?.username, ctx.from?.first_name, ctx.from?.last_name);
+    const role = await getRole(telegramId);
+
+    const sess = await getSession(telegramId);
+    if (sess.state === "form" && (sess.flow === "MEM:SEARCH" || sess.flow === "SEARCH") && data !== "FORM:CANCEL") {
+      await clearSession(telegramId);
+    }
+
+    try {
+      await routeCallback(ctx, data, role, telegramId);
+    } catch (err) {
+      logger.error({ err, data }, "Callback query error");
+      await ctx.answerCbQuery("❌ 操作失败，请重试", { show_alert: true });
+    }
+  });
+
+  return bot;
+}
+
+async function routeCallback(ctx: any, data: string, role: Role, telegramId: string): Promise<void> {
+  if (data === "FORM:CANCEL") {
+    await clearSession(telegramId);
+    await ctx.answerCbQuery("❌ 已取消");
+    await showMenu(ctx, "M:HOME", role);
+    return;
+  }
+
+  if (data.startsWith("FORM:SELECT:")) {
+    const parts = data.split(":");
+    const key = parts[2];
+    const value = parts.slice(3).join(":");
+    await handleFormSelect(ctx, key, value, role);
+    return;
+  }
+
+  if (data.startsWith("PAGE:")) {
+    const pageParts = data.split(":");
+    if (pageParts[1] === "AUDIT") {
+      if (!canExecuteAction(role, "M:SET")) {
+        await ctx.answerCbQuery("⛔ 你没有权限查看审计日志", { show_alert: true });
+        return;
+      }
+      const offset = parseInt(pageParts[2] ?? "0", 10);
+      await ctx.answerCbQuery();
+      await showAuditLog(ctx, isNaN(offset) ? 0 : Math.max(0, offset));
+      return;
+    }
+    await ctx.answerCbQuery("📄");
+    return;
+  }
+
+  const parts = data.split(":");
+
+  if (parts[0] === "SELECT") {
+    await ctx.answerCbQuery("✅ 已选择");
+    return;
+  }
+
+  let authKey: string;
+  if (parts[0] === "M") {
+    authKey = `M:${parts[1]}`;
+  } else if (data.startsWith("DOC:CATE:OPEN:")) {
+    authKey = "DOC:CATE";
+  } else if (data.startsWith("DOC:LIST:")) {
+    authKey = "DOC:LIST";
+  } else if (data.startsWith("DOC:LINKPROJ:")) {
+    authKey = "DOC:LINKPROJ";
+  } else if (data.startsWith("DOC:BYPROJ:")) {
+    authKey = "DOC:LINKPROJ";
+  } else if (data.startsWith("PROJ:LIST:")) {
+    authKey = "PROJ:LIST";
+  } else if (data.startsWith("TASK:MY:")) {
+    authKey = "TASK:MY";
+  } else if (data.startsWith("REQ:LIST:")) {
+    authKey = "REQ:LIST";
+  } else if (data.startsWith("FIN:LIST:")) {
+    authKey = "FIN:LIST";
+  } else if (data.startsWith("FIN:MONTHLY:")) {
+    authKey = "FIN:MONTHLY";
+  } else {
+    authKey = `${parts[0]}:${parts[1]}`;
+  }
+
+  if (!canExecuteAction(role, authKey)) {
+    await ctx.answerCbQuery("⛔ 你没有权限执行该操作", { show_alert: true });
+    logger.warn({ telegramId, role, authKey }, "Authz blocked callback");
+    return;
+  }
+
+  if (parts[0] === "M") {
+    const menuKey = `M:${parts[1]}`;
+    await ctx.answerCbQuery();
+    if (menuKey === "M:SEARCH") {
+      await startSearch(ctx);
+    } else {
+      await showMenu(ctx, menuKey, role);
+    }
+    return;
+  }
+
+  if (data.startsWith("DOC:CATE:OPEN:")) {
+    await ctx.answerCbQuery();
+    const tail = data.replace("DOC:CATE:OPEN:", "");
+    const segs = tail.split(":");
+    const category = segs[0] ?? "OTHER";
+    const off = segs[1] ? parseInt(segs[1], 10) : 0;
+    await showDocsByCategory(ctx, category, isNaN(off) ? 0 : off);
+    return;
+  }
+
+  const module = parts[0];
+  const action = parts[1];
+  const idStr = parts[2];
+  const extra = parts[3];
+  const id = parseInt(idStr ?? "0", 10);
+
+  switch (module) {
+    case "PROJ":
+      switch (action) {
+        case "NEW":
+          await ctx.answerCbQuery();
+          await startFlow(ctx, "PROJ:NEW", role);
+          break;
+        case "LIST": {
+          await ctx.answerCbQuery();
+          const filter = idStr || "ACTIVE";
+          const off = parseInt(extra ?? "0", 10);
+          await showProjectList(ctx, role, filter, isNaN(off) ? 0 : Math.max(0, off));
+          break;
+        }
+        case "OPEN":
+          await ctx.answerCbQuery();
+          await showProjectCard(ctx, id, role);
+          break;
+        case "REPORT":
+          await ctx.answerCbQuery();
+          await showProjectReport(ctx, role);
+          break;
+        case "RISK":
+          await startProjectRiskFlow(ctx, idStr ? id : null, role);
+          break;
+        case "MILE":
+          await ctx.answerCbQuery();
+          if (idStr) {
+            await showProjectMilestones(ctx, id, role);
+          } else {
+            await showMilestonesEntry(ctx, role);
+          }
+          break;
+        case "TASKS":
+          await ctx.answerCbQuery();
+          await showProjectTasks(ctx, id, role);
+          break;
+        case "RISKS":
+          await ctx.answerCbQuery();
+          await showProjectRisks(ctx, id, role);
+          break;
+        case "STATUS":
+          await handleProjectStatus(ctx, id, extra ?? "", role);
+          break;
+        case "ARCH":
+          await handleProjectArchive(ctx, id, true, role);
+          break;
+        case "UNARCH":
+          await handleProjectArchive(ctx, id, false, role);
+          break;
+        case "DEL":
+          await handleProjectDelete(ctx, id, role);
+          break;
+        case "NEWMILE":
+          await startMilestoneFlow(ctx, id, role);
+          break;
+        case "MILEDONE":
+          await handleMilestoneDone(ctx, id, role);
+          break;
+        default:
+          await ctx.answerCbQuery();
+          await showMenu(ctx, "M:PROJ", role);
+      }
+      break;
+
+    case "TASK":
+      if (idStr && ["SETPROG", "SETDELAY", "CHASSIGN", "SETPROJ"].includes(action)) {
+        await handleTaskAction(ctx, action, id, role, extra);
+        break;
+      }
+      if (idStr && ["START", "RESUME", "PAUSE", "DONE", "ARCH", "DEL", "UNASSIGN", "UNLINK"].includes(action)) {
+        await handleTaskAction(ctx, action, id, role);
+        break;
+      }
+      if (action === "PROG") {
+        await showProgressMenu(ctx, id, role);
+        break;
+      }
+      if (action === "DELAY") {
+        await showDelayMenu(ctx, id, role);
+        break;
+      }
+      if (action === "TRANSFER") {
+        const off = parseInt(extra ?? "0", 10);
+        await showAssigneePicker(ctx, id, isNaN(off) ? 0 : Math.max(0, off), role);
+        break;
+      }
+      if (action === "CHPROJ") {
+        const off = parseInt(extra ?? "0", 10);
+        await showProjectPicker(ctx, id, isNaN(off) ? 0 : Math.max(0, off), role);
+        break;
+      }
+      switch (action) {
+        case "NEW":
+          await startTaskFlow(ctx, role);
+          break;
+        case "MY": {
+          await ctx.answerCbQuery();
+          const filter = idStr || "ALL";
+          const off = parseInt(extra ?? "0", 10);
+          await showMyTasks(ctx, role, telegramId, filter, isNaN(off) ? 0 : Math.max(0, off));
+          break;
+        }
+        case "TODAY":
+          await ctx.answerCbQuery();
+          await showTodayTasks(ctx, role, telegramId);
+          break;
+        case "DUESOON":
+          await ctx.answerCbQuery();
+          await showDueSoonTasks(ctx, role, telegramId);
+          break;
+        case "OVERDUE": {
+          await ctx.answerCbQuery();
+          const off = parseInt(idStr ?? "0", 10);
+          await showOverdueTasks(ctx, role, isNaN(off) ? 0 : Math.max(0, off));
+          break;
+        }
+        case "ARCH": {
+          await ctx.answerCbQuery();
+          const off = parseInt(idStr ?? "0", 10);
+          await showArchivedTasks(ctx, isNaN(off) ? 0 : Math.max(0, off));
+          break;
+        }
+        case "OPEN":
+          await ctx.answerCbQuery();
+          await showTaskCard(ctx, id, role);
+          break;
+        default:
+          await ctx.answerCbQuery();
+          await showMenu(ctx, "M:TASK", role);
+      }
+      break;
+
+    case "REQ":
+      if (idStr && (action === "APP" || action === "REJ")) {
+        await startReqReview(ctx, action, id, role);
+        break;
+      }
+      if (idStr && action === "SETPROJ") {
+        await handleReqAction(ctx, action, id, role, extra);
+        break;
+      }
+      if (idStr && ["ARCH", "UNARCH", "DEL", "REOPEN", "TOTASK", "UNLINK"].includes(action)) {
+        await handleReqAction(ctx, action, id, role);
+        break;
+      }
+      if (idStr && action === "CHPROJ") {
+        const off = parseInt(extra ?? "0", 10);
+        await showReqProjectPicker(ctx, id, isNaN(off) ? 0 : Math.max(0, off), role);
+        break;
+      }
+      switch (action) {
+        case "NEW":
+          await startReqFlow(ctx, role);
+          break;
+        case "LIST": {
+          await ctx.answerCbQuery();
+          const filter = idStr || "PENDING";
+          const off = parseInt(extra ?? "0", 10);
+          await showReqList(ctx, role, filter, isNaN(off) ? 0 : Math.max(0, off));
+          break;
+        }
+        case "PENDING":
+          await ctx.answerCbQuery();
+          await showPendingReqs(ctx, role);
+          break;
+        case "APPROVED":
+          await ctx.answerCbQuery();
+          await showApprovedReqs(ctx, role);
+          break;
+        case "REJECTED":
+          await ctx.answerCbQuery();
+          await showRejectedReqs(ctx, role);
+          break;
+        case "STATS":
+          await ctx.answerCbQuery();
+          await showReqStats(ctx);
+          break;
+        case "OPEN":
+          await ctx.answerCbQuery();
+          await showReqCard(ctx, id, role);
+          break;
+        default:
+          await ctx.answerCbQuery();
+          await showMenu(ctx, "M:REQ", role);
+      }
+      break;
+
+    case "DOC": {
+      if (idStr !== undefined && ["PIN", "ARCH", "UNARCH", "DEL", "UNLINK"].includes(action)) {
+        await handleDocAction(ctx, action, id, role);
+        break;
+      }
+      if (idStr !== undefined && action === "SETCAT") {
+        await handleDocAction(ctx, action, id, role, extra);
+        break;
+      }
+      if (idStr !== undefined && action === "SETPROJ") {
+        await handleDocAction(ctx, action, id, role, extra);
+        break;
+      }
+      if (idStr !== undefined && action === "CHCAT") {
+        await showDocCategoryPicker(ctx, id, role);
+        break;
+      }
+      if (idStr !== undefined && action === "CHPROJ") {
+        const off = extra ? parseInt(extra, 10) : 0;
+        await showDocProjectPicker(ctx, id, isNaN(off) ? 0 : off, role);
+        break;
+      }
+      if (idStr !== undefined && action === "EDITTAGS") {
+        await startDocTagsFlow(ctx, id, role);
+        break;
+      }
+      if (idStr !== undefined && action === "PURGE") {
+        await startDocPurgeFlow(ctx, id, role);
+        break;
+      }
+      if (idStr !== undefined && action === "OPEN") {
+        await ctx.answerCbQuery();
+        await showDocCard(ctx, id, role);
+        break;
+      }
+      if (action === "LIST") {
+        await ctx.answerCbQuery();
+        const filter = parts[2] ?? "ALL";
+        const off = parts[3] ? parseInt(parts[3], 10) : 0;
+        await showDocList(ctx, role, filter, isNaN(off) ? 0 : off);
+        break;
+      }
+      if (action === "LINKPROJ") {
+        await ctx.answerCbQuery();
+        const off = parts[2] ? parseInt(parts[2], 10) : 0;
+        await showDocsByProjectPicker(ctx, role, isNaN(off) ? 0 : off);
+        break;
+      }
+      if (action === "BYPROJ") {
+        await ctx.answerCbQuery();
+        const off = parts[3] ? parseInt(parts[3], 10) : 0;
+        await showDocsByProject(ctx, id, isNaN(off) ? 0 : off);
+        break;
+      }
+      switch (action) {
+        case "ADD":
+          await startDocAddFlow(ctx, role);
+          break;
+        case "MINUTES":
+          await ctx.answerCbQuery();
+          await showMeetingMinutes(ctx);
+          break;
+        case "CATE":
+          await ctx.answerCbQuery();
+          await showDocCategories(ctx);
+          break;
+        case "SEARCH":
+          await ctx.answerCbQuery();
+          await startSearch(ctx);
+          break;
+        default:
+          await ctx.answerCbQuery();
+          await showMenu(ctx, "M:DOC", role);
+      }
+      break;
+    }
+
+    case "FIN": {
+      const idStr = parts[2];
+      if (idStr !== undefined && ["PASS", "FAIL"].includes(action)) {
+        await startFinReview(ctx, action as "PASS" | "FAIL", id, role);
+        break;
+      }
+      if (idStr !== undefined && ["ARCH", "UNARCH", "DEL", "UNLINK"].includes(action)) {
+        await handleFinAction(ctx, action, id, role);
+        break;
+      }
+      if (idStr !== undefined && action === "SETPROJ") {
+        await handleFinAction(ctx, action, id, role, parts[3]);
+        break;
+      }
+      if (idStr !== undefined && action === "CHPROJ") {
+        const off = parts[3] ? parseInt(parts[3], 10) : 0;
+        await showFinProjectPicker(ctx, id, isNaN(off) ? 0 : off, role);
+        break;
+      }
+      if (idStr !== undefined && action === "DETAIL") {
+        await ctx.answerCbQuery();
+        await showFinCard(ctx, id, role);
+        break;
+      }
+      if (action === "LIST") {
+        await ctx.answerCbQuery();
+        const filter = parts[2] ?? "PENDING";
+        const off = parts[3] ? parseInt(parts[3], 10) : 0;
+        await showFinList(ctx, role, filter, isNaN(off) ? 0 : off);
+        break;
+      }
+      if (action === "MONTHLY") {
+        await ctx.answerCbQuery();
+        const off = parts[2] ? parseInt(parts[2], 10) : 0;
+        await showMonthlyReport(ctx, isNaN(off) ? 0 : off);
+        break;
+      }
+      switch (action) {
+        case "IN":
+          await startFinFlow(ctx, "FIN:IN", role);
+          break;
+        case "OUT":
+          await startFinFlow(ctx, "FIN:OUT", role);
+          break;
+        case "REIMB":
+          await startFinFlow(ctx, "FIN:REIMB", role);
+          break;
+        case "APPROVALS":
+          await ctx.answerCbQuery();
+          await showPendingApprovals(ctx, role);
+          break;
+        case "BYPROJ":
+          await ctx.answerCbQuery();
+          await showByProject(ctx);
+          break;
+        default:
+          await ctx.answerCbQuery();
+          await showMenu(ctx, "M:FIN", role);
+      }
+      break;
+    }
+
+    case "BI":
+      switch (action) {
+        case "DAILY":
+          await ctx.answerCbQuery();
+          await showDailyOverview(ctx);
+          break;
+        case "MINE":
+          await ctx.answerCbQuery();
+          await showMyDashboard(ctx);
+          break;
+        case "WEEKLY":
+          await ctx.answerCbQuery();
+          await showWeeklyProgress(ctx);
+          break;
+        case "HEALTH":
+          await ctx.answerCbQuery();
+          await showProjectHealth(ctx);
+          break;
+        case "RISK": {
+          await ctx.answerCbQuery();
+          const off = idStr ? parseInt(idStr, 10) : 0;
+          await showRiskAlert(ctx, isNaN(off) ? 0 : off);
+          break;
+        }
+        case "FIN": {
+          await ctx.answerCbQuery();
+          const mo = idStr ? parseInt(idStr, 10) : 0;
+          await showMonthlyFinBI(ctx, isNaN(mo) ? 0 : mo);
+          break;
+        }
+        case "REPORT":
+          await ctx.answerCbQuery();
+          await generateWeeklyReport(ctx, role);
+          break;
+        case "PUSH": {
+          if (idStr === "CH") {
+            await pushDashboardToChannel(ctx);
+          } else if (idStr === "GR") {
+            await pushDashboardToGroup(ctx);
+          } else {
+            await ctx.answerCbQuery();
+            await showPushMenu(ctx);
+          }
+          break;
+        }
+        case "DIGEST": {
+          await ctx.answerCbQuery("📅 推送中…");
+          const { sendDailyDigest, buildDailyDigest } = await import("./reminders.js");
+          const { writeAudit } = await import("./helpers.js");
+          const preview = await buildDailyDigest();
+          if (!preview) {
+            await ctx.reply("✅ 当前无逾期 / 今日截止 / 待审事项，无需推送。");
+            break;
+          }
+          const result = await sendDailyDigest(ctx.telegram);
+          const me = await getUserByTelegramId(telegramId);
+          if (me) await writeAudit(me.id, "REMINDER_MANUAL_DISPATCH", "digest", null, `group=${result.groupSent} dm=${result.dmCount}`, "MEDIUM");
+          const groupLine = result.groupSent ? "📣 已推送到协作群" : "⚠️ 协作群未配置或推送失败";
+          const dmLine = `📨 个人推送：${result.dmCount} 人${result.dmSkipped > 0 ? `（${result.dmSkipped} 人未触达）` : ""}`;
+          await ctx.reply(`${groupLine}\n${dmLine}\n\n👁 <b>预览</b>\n\n${preview}`, { parse_mode: "HTML" });
+          break;
+        }
+        default:
+          await ctx.answerCbQuery();
+          await showMenu(ctx, "M:BI", role);
+      }
+      break;
+
+    case "MEM": {
+      const actor = await getUserByTelegramId(telegramId);
+      if (!actor) {
+        await ctx.answerCbQuery("❌ 用户不存在", { show_alert: true });
+        break;
+      }
+      const mutating = action === "SETROLE" || action === "BLACKLIST" || action === "UNBLACKLIST" || action === "NOOP";
+      if (!mutating) await ctx.answerCbQuery();
+      switch (action) {
+        case "LIST": {
+          const filter = idStr || "ALL";
+          const off = parseInt(extra ?? "0", 10);
+          await showMemberList(ctx, filter, isNaN(off) ? 0 : Math.max(0, off));
+          break;
+        }
+        case "ACL":
+          await showAclPanel(ctx);
+          break;
+        case "ROLE":
+          await showRoleHub(ctx);
+          break;
+        case "POLICY":
+          await showPolicyMatrix(ctx);
+          break;
+        case "SEARCH":
+          await saveSession(telegramId, { state: "form", flow: "MEM:SEARCH", step: 0, formData: {}, steps: [] });
+          await startMemberSearch(ctx);
+          break;
+        case "USER":
+          await showUserCard(ctx, id, actor);
+          break;
+        case "NOOP":
+          await ctx.answerCbQuery("已是当前角色");
+          break;
+        case "SETROLE":
+          await handleMemberAction(ctx, "SETROLE", id, extra, actor);
+          break;
+        case "BLACKLIST":
+          await handleMemberAction(ctx, "BLACKLIST", id, undefined, actor);
+          break;
+        case "UNBLACKLIST":
+          await handleMemberAction(ctx, "UNBLACKLIST", id, undefined, actor);
+          break;
+        default:
+          await showMenu(ctx, "M:MEM", role);
+      }
+      break;
+    }
+
+    case "SET": {
+      const setMutating =
+        action === "REMINDH" ||
+        action === "REMINDM" ||
+        (action === "REMIND" && (extra === "WEEKEND" || extra === "DM")) ||
+        action === "EXP";
+      if (!setMutating) await ctx.answerCbQuery();
+      switch (action) {
+        case "AUDIT": {
+          const level = (idStr ?? "ALL") as "ALL" | "LOW" | "MEDIUM" | "HIGH";
+          const mod = parts[3] ?? "ALL";
+          const off = parseInt(parts[4] ?? "0", 10);
+          await showAuditLog(ctx, isNaN(off) ? 0 : Math.max(0, off), level, mod);
+          break;
+        }
+        case "REMIND": {
+          if (extra === "WEEKEND" || extra === "DM") {
+            await handleReminderEdit(ctx, "REMIND", extra);
+          } else {
+            await showReminderPolicy(ctx);
+          }
+          break;
+        }
+        case "REMINDH":
+          await handleReminderEdit(ctx, "REMINDH", idStr);
+          break;
+        case "REMINDM":
+          await handleReminderEdit(ctx, "REMINDM", idStr);
+          break;
+        case "EXPORT":
+          await showExportPanel(ctx);
+          break;
+        case "EXP":
+          await handleExport(ctx, idStr ?? "");
+          break;
+        case "TAGS":
+          await showTagSystem(ctx);
+          break;
+        case "TEMPLATE":
+          await showSettingsPlaceholder(ctx, "默认模板");
+          break;
+        case "BACKUP":
+          await showBackupPanel(ctx);
+          break;
+        default:
+          await showMenu(ctx, "M:SET", role);
+      }
+      break;
+    }
+
+    case "TRASH": {
+      const type = idStr;
+      if (!isTrashType(type)) {
+        await ctx.answerCbQuery("⚠️ 未知回收站类型", { show_alert: true });
+        break;
+      }
+      if (action === "LIST") {
+        await ctx.answerCbQuery();
+        const off = parseInt(extra ?? "0", 10);
+        await showTrashList(ctx, type, isNaN(off) ? 0 : Math.max(0, off));
+        break;
+      }
+      if (action === "RESTORE") {
+        const rid = parseInt(extra ?? "0", 10);
+        if (!rid) {
+          await ctx.answerCbQuery("❌ 参数错误", { show_alert: true });
+          break;
+        }
+        await handleTrashRestore(ctx, type, rid, telegramId);
+        break;
+      }
+      if (action === "PURGE") {
+        await ctx.answerCbQuery("⛔ 暂不支持永久删除", { show_alert: true });
+        break;
+      }
+      await ctx.answerCbQuery("⚠️ 未知回收站操作", { show_alert: true });
+      break;
+    }
+
+    default:
+      await ctx.answerCbQuery("⚠️ 未知操作");
+  }
+}
+3) artifacts/api-server/src/bot/permissions.ts
+export type Role = "OWNER" | "ADMIN" | "PM" | "FINANCE" | "MEMBER" | "GUEST";
+
+export const ROLE_LEVELS: Record<Role, number> = {
+  OWNER: 100,
+  ADMIN: 80,
+  PM: 60,
+  FINANCE: 55,
+  MEMBER: 30,
+  GUEST: 10,
+};
+
+export const VISIBLE_ROLES: Record<string, Role[]> = {
+  ALL_USERS: ["OWNER", "ADMIN", "PM", "FINANCE", "MEMBER", "GUEST"],
+  ADMIN_ONLY: ["OWNER", "ADMIN"],
+  PM_OR_ADMIN: ["OWNER", "ADMIN", "PM"],
+  FINANCE_OR_ADMIN: ["OWNER", "ADMIN", "FINANCE"],
+  OWNER_ONLY: ["OWNER"],
+};
+
+export function hasPermission(role: Role, allowedRoles: Role[]): boolean {
+  return allowedRoles.includes(role);
+}
+
+export function canAccess(role: Role, policyKey: string): boolean {
+  const allowed = VISIBLE_ROLES[policyKey];
+  if (!allowed) return false;
+  return hasPermission(role, allowed);
+}
+
+export const ACTION_PERMISSIONS: Record<string, string> = {
+  "M:HOME": "ALL_USERS",
+  "M:PROJ": "ALL_USERS",
+  "M:TASK": "ALL_USERS",
+  "M:REQ": "ALL_USERS",
+  "M:DOC": "ALL_USERS",
+  "M:FIN": "FINANCE_OR_ADMIN",
+  "M:BI": "ALL_USERS",
+  "M:MEM": "ADMIN_ONLY",
+  "M:SET": "ADMIN_ONLY",
+  "M:TRASH": "ADMIN_ONLY",
+
+  "TRASH:LIST": "ADMIN_ONLY",
+  "TRASH:RESTORE": "ADMIN_ONLY",
+  "TRASH:PURGE": "ADMIN_ONLY",
+
+  "M:SEARCH": "ALL_USERS",
+
+  "PROJ:NEW": "PM_OR_ADMIN",
+  "PROJ:LIST": "ALL_USERS",
+  "PROJ:MILE": "ALL_USERS",
+  "PROJ:RISK": "ALL_USERS",
+  "PROJ:REPORT": "PM_OR_ADMIN",
+  "PROJ:STATUS": "PM_OR_ADMIN",
+  "PROJ:ARCH": "PM_OR_ADMIN",
+  "PROJ:UNARCH": "PM_OR_ADMIN",
+  "PROJ:TASKS": "ALL_USERS",
+  "PROJ:RISKS": "ALL_USERS",
+  "PROJ:NEWMILE": "PM_OR_ADMIN",
+  "PROJ:MILEDONE": "PM_OR_ADMIN",
+
+  "TASK:NEW": "ALL_USERS",
+  "TASK:MY": "ALL_USERS",
+  "TASK:TODAY": "ALL_USERS",
+  "TASK:DUESOON": "ALL_USERS",
+  "TASK:OVERDUE": "PM_OR_ADMIN",
+  "TASK:ARCH": "PM_OR_ADMIN",
+
+  "TASK:DEL": "PM_OR_ADMIN",
+  "REQ:DEL": "PM_OR_ADMIN",
+  "FIN:DEL": "FINANCE_OR_ADMIN",
+  "DOC:DEL": "PM_OR_ADMIN",
+  "PROJ:DEL": "PM_OR_ADMIN",
+
+  "REQ:NEW": "ALL_USERS",
+  "REQ:PENDING": "PM_OR_ADMIN",
+  "REQ:APPROVED": "ALL_USERS",
+  "REQ:REJECTED": "PM_OR_ADMIN",
+  "REQ:STATS": "PM_OR_ADMIN",
+
+  "DOC:ADD": "ALL_USERS",
+  "DOC:MINUTES": "ALL_USERS",
+  "DOC:CATE": "ALL_USERS",
+  "DOC:LINKPROJ": "ALL_USERS",
+  "DOC:SEARCH": "ALL_USERS",
+  "DOC:ARCH": "PM_OR_ADMIN",
+
+  "FIN:IN": "FINANCE_OR_ADMIN",
+  "FIN:OUT": "FINANCE_OR_ADMIN",
+  "FIN:REIMB": "ALL_USERS",
+  "FIN:APPROVALS": "FINANCE_OR_ADMIN",
+  "FIN:MONTHLY": "FINANCE_OR_ADMIN",
+  "FIN:BYPROJ": "FINANCE_OR_ADMIN",
+
+  "BI:DAILY": "ALL_USERS",
+  "BI:MINE": "ALL_USERS",
+  "BI:WEEKLY": "ALL_USERS",
+  "BI:HEALTH": "PM_OR_ADMIN",
+  "BI:RISK": "PM_OR_ADMIN",
+  "BI:FIN": "FINANCE_OR_ADMIN",
+  "BI:REPORT": "PM_OR_ADMIN",
+  "BI:PUSH": "ADMIN_ONLY",
+  "BI:DIGEST": "ADMIN_ONLY",
+
+  "MEM:LIST": "ADMIN_ONLY",
+  "MEM:ROLE": "ADMIN_ONLY",
+  "MEM:POLICY": "ADMIN_ONLY",
+  "MEM:ACL": "ADMIN_ONLY",
+
+  "SET:REMIND": "ADMIN_ONLY",
+  "SET:TAGS": "ADMIN_ONLY",
+  "SET:TEMPLATE": "ADMIN_ONLY",
+  "SET:EXPORT": "ADMIN_ONLY",
+  "SET:BACKUP": "ADMIN_ONLY",
+  "SET:AUDIT": "ADMIN_ONLY",
+  "SET:REMINDH": "ADMIN_ONLY",
+  "SET:REMINDM": "ADMIN_ONLY",
+  "SET:EXP": "ADMIN_ONLY",
+
+  "TASK:START": "ALL_USERS",
+  "TASK:PROG": "ALL_USERS",
+  "TASK:SETPROG": "ALL_USERS",
+  "TASK:DONE": "ALL_USERS",
+  "TASK:RESUME": "ALL_USERS",
+  "TASK:TRANSFER": "PM_OR_ADMIN",
+  "TASK:CHASSIGN": "PM_OR_ADMIN",
+  "TASK:CHPROJ": "PM_OR_ADMIN",
+  "TASK:SETPROJ": "PM_OR_ADMIN",
+  "TASK:UNASSIGN": "PM_OR_ADMIN",
+  "TASK:UNLINK": "PM_OR_ADMIN",
+  "TASK:PAUSE": "PM_OR_ADMIN",
+  "TASK:DELAY": "PM_OR_ADMIN",
+  "TASK:SETDELAY": "PM_OR_ADMIN",
+
+  "REQ:APP": "PM_OR_ADMIN",
+  "REQ:REJ": "PM_OR_ADMIN",
+  "REQ:LINKPROJ": "PM_OR_ADMIN",
+  "REQ:TOTASK": "PM_OR_ADMIN",
+  "REQ:ARCH": "PM_OR_ADMIN",
+  "REQ:UNARCH": "PM_OR_ADMIN",
+  "REQ:REOPEN": "PM_OR_ADMIN",
+  "REQ:CHPROJ": "PM_OR_ADMIN",
+  "REQ:SETPROJ": "PM_OR_ADMIN",
+  "REQ:UNLINK": "PM_OR_ADMIN",
+  "REQ:LIST": "ALL_USERS",
+
+  "FIN:PASS": "FINANCE_OR_ADMIN",
+  "FIN:FAIL": "FINANCE_OR_ADMIN",
+  "FIN:PROOF": "ALL_USERS",
+  "FIN:DETAIL": "FINANCE_OR_ADMIN",
+  "FIN:ARCH": "FINANCE_OR_ADMIN",
+  "FIN:UNARCH": "FINANCE_OR_ADMIN",
+  "FIN:LIST": "FINANCE_OR_ADMIN",
+  "FIN:CHPROJ": "FINANCE_OR_ADMIN",
+  "FIN:SETPROJ": "FINANCE_OR_ADMIN",
+  "FIN:UNLINK": "FINANCE_OR_ADMIN",
+
+  "DOC:TAG": "PM_OR_ADMIN",
+  "DOC:LINK": "PM_OR_ADMIN",
+  "DOC:PIN": "PM_OR_ADMIN",
+  "DOC:PURGE": "ADMIN_ONLY",
+  "DOC:UNARCH": "PM_OR_ADMIN",
+  "DOC:LIST": "ALL_USERS",
+  "DOC:CHCAT": "PM_OR_ADMIN",
+  "DOC:SETCAT": "PM_OR_ADMIN",
+  "DOC:CHPROJ": "PM_OR_ADMIN",
+  "DOC:SETPROJ": "PM_OR_ADMIN",
+  "DOC:UNLINK": "PM_OR_ADMIN",
+  "DOC:EDITTAGS": "PM_OR_ADMIN",
+
+  "MEM:USER": "ADMIN_ONLY",
+  "MEM:SETROLE": "ADMIN_ONLY",
+  "MEM:BLACKLIST": "ADMIN_ONLY",
+  "MEM:UNBLACKLIST": "ADMIN_ONLY",
+  "MEM:SEARCH": "ADMIN_ONLY",
+  "MEM:NOOP": "ADMIN_ONLY",
+};
+
+export function canExecuteAction(role: Role, action: string): boolean {
+  const policyKey = ACTION_PERMISSIONS[action];
+  if (!policyKey) return true;
+  return canAccess(role, policyKey);
+}
+4) artifacts/api-server/src/bot/group-service.ts
+import { db, groupsTable, projectsTable, notDeleted, type Group } from "@workspace/db";
+import { and, eq } from "drizzle-orm";
+import { logger } from "../lib/logger.js";
+
+/**
+ * Tiny in-memory cache for the enabled-groups list.
+ * Routing is invoked on every broadcast → don't hit DB each time.
+ * 30 s TTL is conservative; invalidate explicitly on group writes (P2 admin UI).
+ */
+const TTL_MS = 30_000;
+let cache: { groups: Group[]; expiresAt: number } | null = null;
+
+export async function listEnabledGroups(): Promise<Group[]> {
+  const now = Date.now();
+  if (cache && cache.expiresAt > now) return cache.groups;
+
+  try {
+    const rows = await db.select().from(groupsTable);
+
+    // Filter & sort in memory: enabled, non-deleted, oldest first (stable
+    // "first enabled group" tiebreak across processes).
+    const groups = rows
+      .filter((g) => g.isEnabled === 1 && g.deletedAt == null)
+      .sort((a, b) => a.id - b.id);
+
+    cache = { groups, expiresAt: now + TTL_MS };
+    return groups;
+  } catch (err) {
+    logger.warn({ err }, "Failed to load groups — falling back to env-only routing");
+    return [];
+  }
+}
+
+/** Force a refresh on the next call. Call after any write to groupsTable. */
+export function invalidateGroupsCache(): void {
+  cache = null;
+}
+
+/**
+ * P1 routing helper — resolves a projectId into its bound groupId, if any.
+ *
+ * The pure routing core (`getBroadcastTargets`) deliberately does NOT take a
+ * project→group map: keeping it pure means routing logic stays unit-testable
+ * without DB fixtures. The lookup lives here, in the IO layer.
+ *
+ * Usage in P1 call-sites:
+ *   const groupId = await resolveGroupIdForProject(task.projectId);
+ *   await dispatchBroadcast(tg, "TASK_CREATE", { projectId: task.projectId, groupId }, text);
+ *
+ * Returns null when projectId is null, project doesn't exist, project is
+ * soft-deleted, or project has no groupId binding — in all cases the routing
+ * core falls back to "first enabled group" or env.
+ */
+export async function resolveGroupIdForProject(projectId: number | null | undefined): Promise<number | null> {
+  if (projectId == null) return null;
+
+  try {
+    const rows = await db
+      .select({ groupId: projectsTable.groupId })
+      .from(projectsTable)
+      .where(and(eq(projectsTable.id, projectId), notDeleted(projectsTable)))
+      .limit(1);
+
+    return rows[0]?.groupId ?? null;
+  } catch (err) {
+    logger.warn({ err, projectId }, "Failed to resolve project→group mapping");
+    return null;
+  }
+}
+结论（你要的“直接给代码”交付已完成）
+
+这 4 个文件版本 可以直接覆盖粘贴，并且和你当前 B2/B3 的架构约束完全一致：
+
+menus.ts：M:SET 内挂载 M:TRASH，结构扁平对齐
+index.ts：TRASH 模块完整路由、DEL mutator 已接入、DOC:PURGE flow 保留
+permissions.ts：B2.2 的软删权限矩阵已固化
+group-service.ts：routing P1 所需 helper + TTL cache
+
+你如果愿意，下一步我就继续给 B3 P2 的关键文件：
+routing.ts / dispatch.ts / handlers/bi.ts / reminders.ts / form-handler.ts 的最终版本。

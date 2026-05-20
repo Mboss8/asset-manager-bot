@@ -1,0 +1,159 @@
+下面是这 3 项核心升级的 Drizzle Schema 定义 和 核心逻辑代码，你可以直接复制到你的项目中。
+
+一、 Drizzle Schema 更新 (新增表与字段)
+在你的 schema.ts 中，增加 groups 表，并为现有的表追加 groupId、serialNo 和 deletedAt。
+
+TypeScript
+import { pgTable, serial, varchar, text, integer, timestamp, bigint } from 'drizzle-orm/pg-core';
+
+// ==========================================
+// 1. 新增：群组/频道路由中心
+// ==========================================
+export const groups = pgTable('groups', {
+  id: serial('id').primaryKey(),
+  // 注意：TG Chat ID 可能很大（甚至为负数），建议用 bigint 或 varchar 存储
+  tgChatId: bigint('tg_chat_id', { mode: 'bigint' }).notNull().unique(),
+  chatType: varchar('chat_type', { length: 50 }).notNull(), // 'group' | 'supergroup' | 'channel'
+  title: varchar('title', { length: 255 }).notNull(),
+  isEnabled: integer('is_enabled').default(1).notNull(), // 1: 启用, 0: 停用
+  defaultReportChannelId: bigint('default_report_channel_id', { mode: 'bigint' }), // 默认播报频道
+  financeReportChannelId: bigint('finance_report_channel_id', { mode: 'bigint' }), // 财务专用播报频道
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  deletedAt: timestamp('deleted_at'), // 软删
+});
+
+// ==========================================
+// 2. 现有表追加字段 (只列出需要补充的字段)
+// ==========================================
+
+export const projects = pgTable('projects', {
+  // ...你原有的字段
+  groupId: integer('group_id').references(() => groups.id), // 绑定专属群组
+  deletedAt: timestamp('deleted_at'), // 软删标识
+});
+
+export const tasks = pgTable('tasks', {
+  // ...你原有的字段
+  serialNo: varchar('serial_no', { length: 50 }).unique(), // 示例：T-202605-0001
+  groupId: integer('group_id').references(() => groups.id),
+  deletedAt: timestamp('deleted_at'),
+});
+
+export const requirements = pgTable('requirements', {
+  // ...你原有的字段
+  serialNo: varchar('serial_no', { length: 50 }).unique(), // 示例：R-202605-0001
+  groupId: integer('group_id').references(() => groups.id),
+  deletedAt: timestamp('deleted_at'),
+});
+
+export const financeRecords = pgTable('finance_records', {
+  // ...你原有的字段
+  serialNo: varchar('serial_no', { length: 50 }).unique(), // 示例：F-202605-0001
+  ledgerSerial: varchar('ledger_serial', { length: 50 }).unique(), // 正式入账后的财务凭证号
+  groupId: integer('group_id').references(() => groups.id),
+  deletedAt: timestamp('deleted_at'),
+});
+
+export const documents = pgTable('documents', {
+  // ...你原有的字段
+  serialNo: varchar('serial_no', { length: 50 }).unique(), // 示例：D-202605-0001
+  groupId: integer('group_id').references(() => groups.id),
+  deletedAt: timestamp('deleted_at'),
+});
+二、 流水号自动生成器 (Serial Generator)
+在你的 src/utils 或 src/services 目录下新建一个 serialGenerator.ts。这个工具函数会自动计算当月的最大序号并 +1，生成类似 T-202605-0001 的漂亮单号。
+
+TypeScript
+import { db } from '../db'; // 替换为你的 db 实例路径
+import { tasks, requirements, financeRecords, documents } from '../db/schema';
+import { sql, desc, like } from 'drizzle-orm';
+import dayjs from 'dayjs'; // 建议用 dayjs 处理时间
+
+type ModulePrefix = 'T' | 'R' | 'F' | 'D' | 'LEDGER';
+
+/**
+ * 自动生成按月递增的业务流水号 (格式: PREFIX-YYYYMM-XXXX)
+ * @param prefix 模块前缀，如 'T' 代表任务
+ */
+export async function generateSerialNo(prefix: ModulePrefix): Promise<string> {
+  const currentMonth = dayjs().format('YYYYMM'); // 如: 202605
+  const searchPattern = `${prefix}-${currentMonth}-%`; 
+
+  let maxSerialRecord;
+
+  // 根据前缀查对应表的当月最大流水号
+  switch (prefix) {
+    case 'T':
+      maxSerialRecord = await db.select({ serialNo: tasks.serialNo })
+        .from(tasks)
+        .where(like(tasks.serialNo, searchPattern))
+        .orderBy(desc(tasks.serialNo))
+        .limit(1);
+      break;
+    case 'R':
+      maxSerialRecord = await db.select({ serialNo: requirements.serialNo })
+        .from(requirements)
+        .where(like(requirements.serialNo, searchPattern))
+        .orderBy(desc(requirements.serialNo))
+        .limit(1);
+      break;
+    case 'F':
+      maxSerialRecord = await db.select({ serialNo: financeRecords.serialNo })
+        .from(financeRecords)
+        .where(like(financeRecords.serialNo, searchPattern))
+        .orderBy(desc(financeRecords.serialNo))
+        .limit(1);
+      break;
+    case 'D':
+      maxSerialRecord = await db.select({ serialNo: documents.serialNo })
+        .from(documents)
+        .where(like(documents.serialNo, searchPattern))
+        .orderBy(desc(documents.serialNo))
+        .limit(1);
+      break;
+    // ... 其他模块如 LEDGER
+  }
+
+  let nextSeq = 1;
+  if (maxSerialRecord && maxSerialRecord.length > 0 && maxSerialRecord[0].serialNo) {
+    // 提取最后的 4 位数字并 +1
+    const currentMaxStr = maxSerialRecord[0].serialNo.split('-').pop();
+    if (currentMaxStr) {
+      nextSeq = parseInt(currentMaxStr, 10) + 1;
+    }
+  }
+
+  // 组装新流水号，补齐 4 位 0 (如 T-202605-0001)
+  const paddedSeq = nextSeq.toString().padStart(4, '0');
+  return `${prefix}-${currentMonth}-${paddedSeq}`;
+}
+
+// ================= 使用示例 =================
+// const newSerial = await generateSerialNo('T');
+// console.log(newSerial); // 输出: T-202605-0001
+三、 软删 (Soft Delete) 查询约定
+加了 deleted_at 后，你的所有基础查询逻辑都需要做个小适配。建议在 Drizzle 里这样写，将 isArchived（业务归档）和 deletedAt（逻辑删除）区分开：
+
+TypeScript
+import { isNull, and, eq } from 'drizzle-orm';
+
+// 1. 查询所有「活着的」未归档任务（日常操作）
+const activeTasks = await db.select().from(tasks)
+  .where(
+    and(
+      isNull(tasks.deletedAt), // 没被软删
+      eq(tasks.isArchived, 0)  // 没被业务归档
+    )
+  );
+
+// 2. 软删一条记录（丢进垃圾桶）
+await db.update(tasks)
+  .set({ deletedAt: new Date() })
+  .where(eq(tasks.id, 123));
+
+// 3. 业务归档一条记录（已完成入库，不再显示在待办里）
+await db.update(tasks)
+  .set({ isArchived: 1, status: 'DONE' })
+  .where(eq(tasks.id, 123));
+只需这三步代码补充进去，你可以直接跑 drizzle-kit push 或 drizzle-kit generate 了。

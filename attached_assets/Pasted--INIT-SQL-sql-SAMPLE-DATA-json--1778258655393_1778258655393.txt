@@ -1,0 +1,328 @@
+我们就把最后这两块拼图补齐，为你奉上真正可以直接点亮系统的“产品级武器”：INIT_SQL.sql（数据库初始化脚本）和 SAMPLE_DATA.json（真实业务场景演示数据）。
+
+有了这两份文件，你的开发团队在本地 docker compose up 启动后，系统里就不会是一片空白，而是立刻拥有了一套鲜活的、随时可演示的协作中台。
+
+1）INIT_SQL.sql（数据库物理模型与初始化）
+作用： 严格按照前文定义的 data_schema.json，在 PostgreSQL 中拉起底层表结构、状态枚举和核心索引。
+
+SQL
+-- ==============================================================================
+-- TG Internal Ops Bot - Database Initialization Script (PostgreSQL)
+-- ==============================================================================
+
+-- 1. 启用 UUID 扩展
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+-- 2. 创建枚举类型 (Enums)
+CREATE TYPE user_role AS ENUM ('OWNER', 'ADMIN', 'PM', 'FINANCE', 'MEMBER', 'GUEST');
+CREATE TYPE task_status AS ENUM ('TODO', 'DOING', 'VERIFY', 'DONE', 'PAUSED', 'ARCHIVED');
+CREATE TYPE task_priority AS ENUM ('HIGH', 'MEDIUM', 'LOW');
+CREATE TYPE req_status AS ENUM ('PENDING', 'APPROVED', 'REJECTED', 'CONVERTED', 'ARCHIVED');
+CREATE TYPE proj_status AS ENUM ('INIT', 'ACTIVE', 'RISK', 'PAUSED', 'DONE', 'ARCHIVED');
+CREATE TYPE doc_category AS ENUM ('POLICY', 'PROJECT', 'MINUTES', 'KNOWLEDGE', 'FINANCE', 'OTHER');
+CREATE TYPE fin_type AS ENUM ('INCOME', 'EXPENSE', 'REIMBURSEMENT');
+CREATE TYPE fin_status AS ENUM ('DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'ARCHIVED');
+CREATE TYPE currency_type AS ENUM ('CNY', 'USD', 'USDT');
+CREATE TYPE audit_level AS ENUM ('LOW', 'MEDIUM', 'HIGH');
+
+-- ==========================================
+-- 3. 创建核心数据表
+-- ==========================================
+
+-- 用户表
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tg_user_id BIGINT UNIQUE NOT NULL,
+    username VARCHAR(255),
+    first_name VARCHAR(255),
+    last_name VARCHAR(255),
+    role user_role DEFAULT 'MEMBER',
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 群组/频道表
+CREATE TABLE groups (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tg_chat_id BIGINT UNIQUE NOT NULL,
+    chat_type VARCHAR(50) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    is_enabled BOOLEAN DEFAULT TRUE,
+    default_report_channel_id BIGINT,
+    finance_report_channel_id BIGINT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 项目表
+CREATE TABLE projects (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(150) NOT NULL,
+    description TEXT,
+    status proj_status DEFAULT 'INIT',
+    owner_id UUID REFERENCES users(id),
+    group_id UUID REFERENCES groups(id),
+    start_date DATE,
+    end_date DATE,
+    report_channel_id BIGINT,
+    channel_push_enabled BOOLEAN DEFAULT FALSE,
+    task_total_count INT DEFAULT 0,
+    task_active_count INT DEFAULT 0,
+    doc_count INT DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 任务表
+CREATE TABLE tasks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    serial_no VARCHAR(50) UNIQUE NOT NULL,
+    title VARCHAR(120) NOT NULL,
+    description TEXT,
+    status task_status DEFAULT 'TODO',
+    priority task_priority DEFAULT 'MEDIUM',
+    progress INT DEFAULT 0 CHECK (progress >= 0 AND progress <= 100),
+    project_id UUID REFERENCES projects(id),
+    assignee_id UUID REFERENCES users(id) NOT NULL,
+    creator_id UUID REFERENCES users(id) NOT NULL,
+    group_id UUID REFERENCES groups(id),
+    due_date DATE,
+    last_progress_update_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE
+);
+
+-- 需求池表
+CREATE TABLE requirements (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    serial_no VARCHAR(50) UNIQUE NOT NULL,
+    title VARCHAR(120) NOT NULL,
+    background TEXT NOT NULL,
+    acceptance TEXT NOT NULL,
+    status req_status DEFAULT 'PENDING',
+    priority task_priority DEFAULT 'MEDIUM',
+    creator_id UUID REFERENCES users(id) NOT NULL,
+    reviewer_id UUID REFERENCES users(id),
+    project_id UUID REFERENCES projects(id),
+    group_id UUID REFERENCES groups(id),
+    due_date DATE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE
+);
+
+-- 财务台账表
+CREATE TABLE finance_records (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    serial_no VARCHAR(50) UNIQUE NOT NULL,
+    ledger_serial VARCHAR(50) UNIQUE,
+    type fin_type DEFAULT 'EXPENSE',
+    status fin_status DEFAULT 'PENDING_APPROVAL',
+    amount NUMERIC(18, 2) NOT NULL CHECK (amount >= 0.01),
+    currency currency_type DEFAULT 'CNY',
+    purpose VARCHAR(500) NOT NULL,
+    occur_date DATE NOT NULL,
+    project_id UUID REFERENCES projects(id),
+    group_id UUID REFERENCES groups(id),
+    creator_id UUID REFERENCES users(id) NOT NULL,
+    auditor_id UUID REFERENCES users(id),
+    audit_notes TEXT,
+    proof_file_id VARCHAR(255),
+    proof_url TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE
+);
+
+-- 文档表
+CREATE TABLE documents (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    serial_no VARCHAR(50) UNIQUE NOT NULL,
+    title VARCHAR(150) NOT NULL,
+    category doc_category DEFAULT 'OTHER',
+    tags VARCHAR(255),
+    file_type VARCHAR(50),
+    file_id VARCHAR(255),
+    file_url TEXT,
+    creator_id UUID REFERENCES users(id) NOT NULL,
+    project_id UUID REFERENCES projects(id),
+    group_id UUID REFERENCES groups(id),
+    is_pinned BOOLEAN DEFAULT FALSE,
+    is_archived BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE
+);
+
+-- ==========================================
+-- 4. 创建核心索引
+-- ==========================================
+CREATE INDEX idx_tasks_status ON tasks(status);
+CREATE INDEX idx_tasks_assignee ON tasks(assignee_id);
+CREATE INDEX idx_tasks_project ON tasks(project_id);
+CREATE INDEX idx_reqs_status ON requirements(status);
+CREATE INDEX idx_fin_status ON finance_records(status);
+CREATE INDEX idx_fin_project ON finance_records(project_id);
+CREATE INDEX idx_docs_category ON documents(category);
+
+-- ==========================================
+-- 5. 更新时间戳触发器函数
+-- ==========================================
+CREATE OR REPLACE FUNCTION trigger_set_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER set_timestamp_tasks BEFORE UPDATE ON tasks FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
+CREATE TRIGGER set_timestamp_projects BEFORE UPDATE ON projects FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
+CREATE TRIGGER set_timestamp_finance BEFORE UPDATE ON finance_records FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
+2）SAMPLE_DATA.json（产品冷启动数据）
+作用： 给前端、机器人渲染引擎提供一套符合现实商业逻辑的测试数据（设定在 2026 年 5 月），一跑起来就有“内味儿”。
+
+JSON
+{
+  "meta": {
+    "name": "sample_seed_data",
+    "version": "1.0.0",
+    "description": "TG Ops Bot 演示数据集"
+  },
+  "seed_data": {
+    "users": [
+      {
+        "id": "e0a12b45-1c34-4b56-8a90-123456789abc",
+        "tg_user_id": 100000001,
+        "username": "boss_owner",
+        "first_name": "Tony",
+        "role": "OWNER"
+      },
+      {
+        "id": "a1b2c3d4-e5f6-7a8b-9c0d-112233445566",
+        "tg_user_id": 100000002,
+        "username": "pm_alex",
+        "first_name": "Alex",
+        "role": "PM"
+      },
+      {
+        "id": "b2c3d4e5-f6a7-8b9c-0d1e-223344556677",
+        "tg_user_id": 100000003,
+        "username": "dev_david",
+        "first_name": "David",
+        "role": "MEMBER"
+      },
+      {
+        "id": "c3d4e5f6-a7b8-9c0d-1e2f-334455667788",
+        "tg_user_id": 100000004,
+        "username": "fin_lisa",
+        "first_name": "Lisa",
+        "role": "FINANCE"
+      }
+    ],
+    "projects": [
+      {
+        "id": "p1111111-2222-3333-4444-555555555555",
+        "name": "🚀 2026 Q2 官网重构与海外版发布",
+        "description": "针对东南亚与中东市场进行官网本地化，包含支付链路重构。",
+        "status": "ACTIVE",
+        "owner_id": "a1b2c3d4-e5f6-7a8b-9c0d-112233445566",
+        "start_date": "2026-04-01",
+        "end_date": "2026-06-30",
+        "task_total_count": 3,
+        "task_active_count": 2
+      }
+    ],
+    "requirements": [
+      {
+        "id": "r1111111-2222-3333-4444-555555555555",
+        "serial_no": "R-202605-0001",
+        "title": "新增 USDT (TRC20) 支付网关接入",
+        "background": "海外高净值客户群体有强烈的加密资产支付需求，当前仅支持法币流失率过高。",
+        "acceptance": "1. 用户可在支付页选择 USDT 结算；2. 资金可实时到账系统并记账；3. 风控拦截机制生效。",
+        "status": "APPROVED",
+        "priority": "HIGH",
+        "creator_id": "e0a12b45-1c34-4b56-8a90-123456789abc",
+        "project_id": "p1111111-2222-3333-4444-555555555555"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "t1111111-2222-3333-4444-555555555555",
+        "serial_no": "T-202605-0001",
+        "title": "USDT 网关后端接口开发",
+        "description": "对接第三方支付提供商 API，完成验签、回调与订单状态流转。",
+        "status": "DOING",
+        "priority": "HIGH",
+        "progress": 40,
+        "project_id": "p1111111-2222-3333-4444-555555555555",
+        "assignee_id": "b2c3d4e5-f6a7-8b9c-0d1e-223344556677",
+        "creator_id": "a1b2c3d4-e5f6-7a8b-9c0d-112233445566",
+        "due_date": "2026-05-15"
+      },
+      {
+        "id": "t2222222-3333-4444-5555-666666666666",
+        "serial_no": "T-202605-0002",
+        "title": "海外版 UI/UX 视觉规范定稿",
+        "description": "输出适用于阿拉伯语（RTL阅读习惯）的设计组件库。",
+        "status": "VERIFY",
+        "priority": "MEDIUM",
+        "progress": 90,
+        "project_id": "p1111111-2222-3333-4444-555555555555",
+        "assignee_id": "a1b2c3d4-e5f6-7a8b-9c0d-112233445566",
+        "creator_id": "e0a12b45-1c34-4b56-8a90-123456789abc",
+        "due_date": "2026-05-10"
+      }
+    ],
+    "finance_records": [
+      {
+        "id": "f1111111-2222-3333-4444-555555555555",
+        "serial_no": "F-202605-0001",
+        "type": "EXPENSE",
+        "status": "PENDING_APPROVAL",
+        "amount": 2500.00,
+        "currency": "USDT",
+        "purpose": "2026年5月 AWS 新加坡节点服务器扩容费用",
+        "occur_date": "2026-05-08",
+        "project_id": "p1111111-2222-3333-4444-555555555555",
+        "creator_id": "b2c3d4e5-f6a7-8b9c-0d1e-223344556677"
+      }
+    ],
+    "documents": [
+      {
+        "id": "d1111111-2222-3333-4444-555555555555",
+        "serial_no": "D-202605-0001",
+        "title": "团队研发流程与 Telegram 机器人使用规范 V1.0",
+        "category": "POLICY",
+        "tags": "制度,必读,入职",
+        "creator_id": "e0a12b45-1c34-4b56-8a90-123456789abc",
+        "is_pinned": true
+      }
+    ]
+  }
+}
+🎉 大功告成：这套系统的最终形态
+到现在为止，这套 TG 内部协作控制台 的十件套架构已经全部落地：
+
+bot_menu_config.json：定义 UI 长什么样。
+
+permissions_policy.json：定义规则和边界。
+
+menu_rendering_rules.json：定义交互逻辑与分页引擎。
+
+event_bus_rules.json：定义自动化神经系统（预警/推送）。
+
+data_schema.json：定义数据大脑结构。
+
+deployment_config.json：定义生产环境运维指标。
+
+api_contract.json：规范前后端对话契约。
+
+docker-compose.yml & .env：容器化一键部署基座。
+
+README_DEPLOY.md：SOP 级操作说明书。
+
+INIT_SQL.sql & SAMPLE_DATA.json：热启动演示引擎。

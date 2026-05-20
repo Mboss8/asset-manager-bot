@@ -1,0 +1,392 @@
+把目前的 deleted_at 从“字段存在”升级为“系统默认规则”：
+
+默认只查未删除数据（deleted_at IS NULL）
+需要时才显式 includeDeleted / onlyDeleted
+避免未来任何人写漏过滤，造成“幽灵数据回潮”
+
+这会让系统的行为更像企业级产品：
+删除不是消失，而是可控的沉默。
+
+推荐落地方案（最稳、改动最小）
+1）抽一个统一 helper：withNotDeleted()
+
+位置建议：src/db/filters/softDelete.ts
+
+import { isNull, SQL, sql } from "drizzle-orm";
+
+export function notDeleted(table: { deletedAt: any }) {
+  return isNull(table.deletedAt);
+}
+
+然后所有查询统一写：
+
+db.select().from(tasks).where(and(eq(tasks.id, id), notDeleted(tasks)));
+
+优点：简单、显式、不会引入魔法。
+
+2）抽象 Repository 层（企业级写法，长期收益最大）
+
+例如：
+
+TaskRepo.findById(id, opts)
+ProjectRepo.listByGroup(groupId, opts)
+
+opts 默认：
+
+{ includeDeleted: false }
+
+这样业务层永远不会直接碰 Drizzle 的 where 细节，数据治理从此“自动驾驶”。
+
+3）删除动作统一为 softDelete()
+
+所有表删除统一走：
+
+deletedAt = new Date()
+
+并且留接口给未来的：
+
+restore（恢复）
+purge（物理清理）
+交付节奏（建议你下一轮拆成 2 个 commit）
+
+Commit A（基础设施）
+
+softDelete helper + conventions 更新
+repo 或 query wrapper 基础结构
+
+Commit B（落地改造）
+
+把最关键链路先接入：tasks / requirements / finance / documents
+projects/groups 后续补齐
+风险提示（但你已经控制得很好）
+
+如果不做统一过滤，未来最容易出现：
+
+“已删除任务又出现在报表里”
+“统计金额突然翻倍”
+“机器人推送重复内容”
+
+这类 bug 最隐蔽，但杀伤力最大。
+
+我建议下一步直接开工：
+先把 Task / Requirement / Finance / Document 四条主业务链路的查询全部收口到 Repo 层，一劳永逸。
+
+直接给你一套可复制落地的 Repo 模板（Drizzle + PostgreSQL 软删默认过滤），你照着放进项目就能用。
+
+1）新增：src/db/soft-delete.ts
+// src/db/soft-delete.ts
+import { isNull, isNotNull } from "drizzle-orm";
+
+export type SoftDeleteMode = "active" | "all" | "deleted";
+
+/**
+ * 默认：只取未删除数据
+ */
+export function notDeleted<T extends { deletedAt: any }>(table: T) {
+  return isNull(table.deletedAt);
+}
+
+/**
+ * 仅取已删除数据
+ */
+export function onlyDeleted<T extends { deletedAt: any }>(table: T) {
+  return isNotNull(table.deletedAt);
+}
+
+/**
+ * mode:
+ * - active: deleted_at IS NULL
+ * - deleted: deleted_at IS NOT NULL
+ * - all: 不加条件
+ */
+export function softDeleteWhere<T extends { deletedAt: any }>(
+  table: T,
+  mode: SoftDeleteMode = "active",
+) {
+  if (mode === "all") return undefined;
+  if (mode === "deleted") return onlyDeleted(table);
+  return notDeleted(table);
+}
+2）新增：Repo 查询 Options 统一定义
+
+src/repos/repo.types.ts
+
+// src/repos/repo.types.ts
+import type { SoftDeleteMode } from "@/db/soft-delete";
+
+export type RepoQueryOptions = {
+  mode?: SoftDeleteMode; // active | all | deleted
+};
+
+export const DEFAULT_QUERY_OPTIONS: Required<RepoQueryOptions> = {
+  mode: "active",
+};
+3）TaskRepo（模板：你可以照这个扩展其他表）
+
+src/repos/task.repo.ts
+
+假设 schema 是 tasks，字段包括：id / groupId / serialNo / deletedAt / createdAt
+
+// src/repos/task.repo.ts
+import { and, desc, eq } from "drizzle-orm";
+import { db } from "@/db";
+import { tasks } from "@/db/schema";
+import { softDeleteWhere } from "@/db/soft-delete";
+import type { RepoQueryOptions } from "./repo.types";
+
+export class TaskRepo {
+  static async findById(id: number, opts: RepoQueryOptions = {}) {
+    const softWhere = softDeleteWhere(tasks, opts.mode);
+
+    const rows = await db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.id, id), softWhere))
+      .limit(1);
+
+    return rows[0] ?? null;
+  }
+
+  static async findBySerialNo(serialNo: string, opts: RepoQueryOptions = {}) {
+    const softWhere = softDeleteWhere(tasks, opts.mode);
+
+    const rows = await db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.serialNo, serialNo), softWhere))
+      .limit(1);
+
+    return rows[0] ?? null;
+  }
+
+  static async listByGroupId(groupId: number, opts: RepoQueryOptions = {}) {
+    const softWhere = softDeleteWhere(tasks, opts.mode);
+
+    return db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.groupId, groupId), softWhere))
+      .orderBy(desc(tasks.id));
+  }
+
+  static async softDeleteById(id: number) {
+    const now = new Date();
+
+    const rows = await db
+      .update(tasks)
+      .set({ deletedAt: now })
+      .where(eq(tasks.id, id))
+      .returning();
+
+    return rows[0] ?? null;
+  }
+
+  static async restoreById(id: number) {
+    const rows = await db
+      .update(tasks)
+      .set({ deletedAt: null })
+      .where(eq(tasks.id, id))
+      .returning();
+
+    return rows[0] ?? null;
+  }
+}
+4）RequirementRepo（同样结构）
+
+src/repos/requirement.repo.ts
+
+// src/repos/requirement.repo.ts
+import { and, desc, eq } from "drizzle-orm";
+import { db } from "@/db";
+import { requirements } from "@/db/schema";
+import { softDeleteWhere } from "@/db/soft-delete";
+import type { RepoQueryOptions } from "./repo.types";
+
+export class RequirementRepo {
+  static async findById(id: number, opts: RepoQueryOptions = {}) {
+    const softWhere = softDeleteWhere(requirements, opts.mode);
+
+    const rows = await db
+      .select()
+      .from(requirements)
+      .where(and(eq(requirements.id, id), softWhere))
+      .limit(1);
+
+    return rows[0] ?? null;
+  }
+
+  static async listByGroupId(groupId: number, opts: RepoQueryOptions = {}) {
+    const softWhere = softDeleteWhere(requirements, opts.mode);
+
+    return db
+      .select()
+      .from(requirements)
+      .where(and(eq(requirements.groupId, groupId), softWhere))
+      .orderBy(desc(requirements.id));
+  }
+
+  static async softDeleteById(id: number) {
+    const now = new Date();
+
+    const rows = await db
+      .update(requirements)
+      .set({ deletedAt: now })
+      .where(eq(requirements.id, id))
+      .returning();
+
+    return rows[0] ?? null;
+  }
+
+  static async restoreById(id: number) {
+    const rows = await db
+      .update(requirements)
+      .set({ deletedAt: null })
+      .where(eq(requirements.id, id))
+      .returning();
+
+    return rows[0] ?? null;
+  }
+}
+5）FinanceRepo（重点：流水号 + groupId）
+
+src/repos/finance.repo.ts
+
+// src/repos/finance.repo.ts
+import { and, desc, eq } from "drizzle-orm";
+import { db } from "@/db";
+import { finance } from "@/db/schema";
+import { softDeleteWhere } from "@/db/soft-delete";
+import type { RepoQueryOptions } from "./repo.types";
+
+export class FinanceRepo {
+  static async findById(id: number, opts: RepoQueryOptions = {}) {
+    const softWhere = softDeleteWhere(finance, opts.mode);
+
+    const rows = await db
+      .select()
+      .from(finance)
+      .where(and(eq(finance.id, id), softWhere))
+      .limit(1);
+
+    return rows[0] ?? null;
+  }
+
+  static async findBySerialNo(serialNo: string, opts: RepoQueryOptions = {}) {
+    const softWhere = softDeleteWhere(finance, opts.mode);
+
+    const rows = await db
+      .select()
+      .from(finance)
+      .where(and(eq(finance.serialNo, serialNo), softWhere))
+      .limit(1);
+
+    return rows[0] ?? null;
+  }
+
+  static async listByGroupId(groupId: number, opts: RepoQueryOptions = {}) {
+    const softWhere = softDeleteWhere(finance, opts.mode);
+
+    return db
+      .select()
+      .from(finance)
+      .where(and(eq(finance.groupId, groupId), softWhere))
+      .orderBy(desc(finance.id));
+  }
+
+  static async softDeleteById(id: number) {
+    const now = new Date();
+
+    const rows = await db
+      .update(finance)
+      .set({ deletedAt: now })
+      .where(eq(finance.id, id))
+      .returning();
+
+    return rows[0] ?? null;
+  }
+
+  static async restoreById(id: number) {
+    const rows = await db
+      .update(finance)
+      .set({ deletedAt: null })
+      .where(eq(finance.id, id))
+      .returning();
+
+    return rows[0] ?? null;
+  }
+}
+6）DocumentRepo
+
+src/repos/document.repo.ts
+
+// src/repos/document.repo.ts
+import { and, desc, eq } from "drizzle-orm";
+import { db } from "@/db";
+import { documents } from "@/db/schema";
+import { softDeleteWhere } from "@/db/soft-delete";
+import type { RepoQueryOptions } from "./repo.types";
+
+export class DocumentRepo {
+  static async findById(id: number, opts: RepoQueryOptions = {}) {
+    const softWhere = softDeleteWhere(documents, opts.mode);
+
+    const rows = await db
+      .select()
+      .from(documents)
+      .where(and(eq(documents.id, id), softWhere))
+      .limit(1);
+
+    return rows[0] ?? null;
+  }
+
+  static async listByGroupId(groupId: number, opts: RepoQueryOptions = {}) {
+    const softWhere = softDeleteWhere(documents, opts.mode);
+
+    return db
+      .select()
+      .from(documents)
+      .where(and(eq(documents.groupId, groupId), softWhere))
+      .orderBy(desc(documents.id));
+  }
+
+  static async softDeleteById(id: number) {
+    const now = new Date();
+
+    const rows = await db
+      .update(documents)
+      .set({ deletedAt: now })
+      .where(eq(documents.id, id))
+      .returning();
+
+    return rows[0] ?? null;
+  }
+
+  static async restoreById(id: number) {
+    const rows = await db
+      .update(documents)
+      .set({ deletedAt: null })
+      .where(eq(documents.id, id))
+      .returning();
+
+    return rows[0] ?? null;
+  }
+}
+7）落地方式（你直接按这个改 service）
+
+以前 service 写：
+
+await db.select().from(tasks).where(eq(tasks.id, id));
+
+现在替换成：
+
+import { TaskRepo } from "@/repos/task.repo";
+
+const task = await TaskRepo.findById(id); // 默认 active
+
+如果要查已删除：
+
+await TaskRepo.findById(id, { mode: "deleted" });
+
+如果要后台管理查全部：
+
+await TaskRepo.findById(id, { mode: "all" });

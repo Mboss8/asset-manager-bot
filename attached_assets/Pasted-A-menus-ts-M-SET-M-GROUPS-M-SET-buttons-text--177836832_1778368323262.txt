@@ -1,0 +1,545 @@
+A) menus.ts — 在 M:SET 加入口 + 新增 M:GROUPS 菜单
+
+在 M:SET.buttons 里加一行（放在回收站上面/下面都行）：
+
+{ text: "📡 群组绑定", callback_data: "M:GROUPS", visible_roles: "ADMIN_ONLY" },
+
+然后在 ALL_MENUS 里新增菜单（建议放在 M:TRASH 下面）：
+
+  "M:GROUPS": {
+    title: "📡 群组绑定",
+    description: "让广播有归属，让频道有边界。",
+    buttons: [
+      { text: "📋 群组列表", callback_data: "GROUPS:LIST:0", visible_roles: "ADMIN_ONLY" },
+      { text: "➕ 注册当前群", callback_data: "GROUPS:REG", visible_roles: "ADMIN_ONLY" },
+      { text: "📁 项目绑定", callback_data: "GROUPS:PROJ:0", visible_roles: "ADMIN_ONLY" },
+    ],
+    footer: [
+      { text: "🔙 返回系统设置", callback_data: "M:SET" },
+      { text: "🏠 返回主页", callback_data: "M:HOME" },
+    ],
+  },
+B) permissions.ts — 注册权限 key
+
+在 ACTION_PERMISSIONS 里加：
+
+  // 群组绑定（P2）
+  "M:GROUPS": "ADMIN_ONLY",
+  "GROUPS:LIST": "ADMIN_ONLY",
+  "GROUPS:REG": "ADMIN_ONLY",
+  "GROUPS:TOGGLE": "ADMIN_ONLY",
+  "GROUPS:DEL": "ADMIN_ONLY",
+  "GROUPS:PROJ": "ADMIN_ONLY",
+  "GROUPS:BIND": "ADMIN_ONLY",
+  "GROUPS:UNBIND": "ADMIN_ONLY",
+C) 新增文件：artifacts/api-server/src/bot/handlers/groups.ts
+
+创建新文件 artifacts/api-server/src/bot/handlers/groups.ts，粘贴以下完整代码：
+
+import type { Context } from "telegraf";
+import { db, groupsTable, projectsTable, notDeleted } from "@workspace/db";
+import { and, desc, eq, isNull } from "drizzle-orm";
+import { editOrSend, buildKeyboard, EMPTY_LIST_MSG, writeAudit } from "../helpers.js";
+import { invalidateGroupsCache } from "../group-service.js";
+import { escapeHtml } from "../notify.js";
+import { getUserByTelegramId } from "../user-service.js";
+
+const PAGE_SIZE = 8;
+
+function chatTypeLabel(t: string): string {
+  if (t === "group") return "👥 群";
+  if (t === "supergroup") return "🏢 超级群";
+  if (t === "channel") return "📢 频道";
+  return t;
+}
+
+export async function showGroupsMenu(ctx: Context): Promise<void> {
+  await editOrSend(
+    ctx,
+    [
+      "📡 <b>群组绑定</b>",
+      "",
+      "这里是你的广播路由中心。",
+      "把群/频道纳入系统后，任务、项目、财务推送会自动分流。",
+    ].join("\n"),
+    buildKeyboard(
+      [
+        { text: "📋 群组列表", callback_data: "GROUPS:LIST:0" },
+        { text: "➕ 注册当前群", callback_data: "GROUPS:REG" },
+        { text: "📁 项目绑定", callback_data: "GROUPS:PROJ:0" },
+      ],
+      2,
+      [
+        { text: "🔙 返回系统设置", callback_data: "M:SET" },
+        { text: "🏠 返回主页", callback_data: "M:HOME" },
+      ],
+    ),
+  );
+}
+
+export async function showGroupsList(ctx: Context, offset = 0): Promise<void> {
+  const rows = await db
+    .select()
+    .from(groupsTable)
+    .where(isNull(groupsTable.deletedAt))
+    .orderBy(desc(groupsTable.id))
+    .limit(PAGE_SIZE)
+    .offset(offset);
+
+  const totalRows = await db
+    .select({ c: db.$count(groupsTable.id) })
+    .from(groupsTable)
+    .where(isNull(groupsTable.deletedAt));
+
+  const total = totalRows[0]?.c ?? 0;
+
+  if (rows.length === 0) {
+    await editOrSend(
+      ctx,
+      `📡 <b>群组列表</b>\n\n${EMPTY_LIST_MSG}\n\n<i>你可以在目标群里输入 /start 再点「注册当前群」</i>`,
+      [
+        [{ text: "➕ 注册当前群", callback_data: "GROUPS:REG" }],
+        [{ text: "🔙 返回", callback_data: "M:GROUPS" }],
+      ],
+    );
+    return;
+  }
+
+  const lines: string[] = [];
+  lines.push(`📡 <b>群组列表</b>（${offset + 1}-${offset + rows.length} / ${total}）`);
+  lines.push("");
+
+  const buttons: { text: string; callback_data: string }[] = [];
+
+  for (const g of rows) {
+    const enabled = g.isEnabled === 1 ? "✅" : "⛔";
+    lines.push(`${enabled} <b>${escapeHtml(g.title)}</b>`);
+    lines.push(` • ${chatTypeLabel(g.chatType)} · <code>${g.tgChatId.toString()}</code>`);
+    if (g.defaultReportChannelId) lines.push(` • 📊 默认报告频道：<code>${g.defaultReportChannelId.toString()}</code>`);
+    if (g.financeReportChannelId) lines.push(` • 💰 财务频道：<code>${g.financeReportChannelId.toString()}</code>`);
+    lines.push("");
+
+    buttons.push({
+      text: g.isEnabled === 1 ? `🔕 禁用 #${g.id}` : `🔔 启用 #${g.id}`,
+      callback_data: `GROUPS:TOGGLE:${g.id}`,
+    });
+    buttons.push({
+      text: `🗑 删除 #${g.id}`,
+      callback_data: `GROUPS:DEL:${g.id}`,
+    });
+  }
+
+  const nav: { text: string; callback_data: string }[] = [];
+  if (offset > 0) nav.push({ text: "⬅️ 上一页", callback_data: `GROUPS:LIST:${Math.max(0, offset - PAGE_SIZE)}` });
+  if (offset + PAGE_SIZE < total) nav.push({ text: "下一页 ➡️", callback_data: `GROUPS:LIST:${offset + PAGE_SIZE}` });
+
+  const kb: { text: string; callback_data: string }[][] = buildKeyboard(buttons, 2, [
+    { text: "➕ 注册当前群", callback_data: "GROUPS:REG" },
+    { text: "🔙 返回", callback_data: "M:GROUPS" },
+  ]);
+
+  if (nav.length > 0) kb.unshift(nav);
+
+  await editOrSend(ctx, lines.join("\n").trimEnd(), kb);
+}
+
+export async function handleGroupRegister(ctx: Context, telegramId: string): Promise<void> {
+  const chat = ctx.chat;
+  if (!chat) {
+    await ctx.answerCbQuery("❌ 无法识别当前 chat", { show_alert: true });
+    return;
+  }
+
+  if (!("id" in chat)) {
+    await ctx.answerCbQuery("❌ chat 类型不支持", { show_alert: true });
+    return;
+  }
+
+  const chatId = BigInt(chat.id);
+  const title = "title" in chat ? (chat.title ?? "Untitled") : "Untitled";
+  const chatType = chat.type;
+
+  const actor = await getUserByTelegramId(telegramId);
+  if (!actor) {
+    await ctx.answerCbQuery("❌ 用户不存在", { show_alert: true });
+    return;
+  }
+
+  const existing = await db
+    .select()
+    .from(groupsTable)
+    .where(and(eq(groupsTable.tgChatId, chatId), isNull(groupsTable.deletedAt)))
+    .limit(1);
+
+  if (existing.length > 0) {
+    await ctx.answerCbQuery("⚠️ 此群已注册", { show_alert: true });
+    return;
+  }
+
+  await db.insert(groupsTable).values({
+    tgChatId: chatId,
+    title,
+    chatType,
+    isEnabled: 1,
+  });
+
+  invalidateGroupsCache();
+
+  await writeAudit(
+    actor.id,
+    "GROUP_REGISTER",
+    "group",
+    null,
+    `chatId=${chatId.toString()} title=${title} type=${chatType}`,
+    "MEDIUM",
+  );
+
+  await ctx.answerCbQuery("✅ 已注册当前群", { show_alert: true });
+  await showGroupsList(ctx, 0);
+}
+
+export async function handleGroupToggle(ctx: Context, groupId: number, telegramId: string): Promise<void> {
+  const actor = await getUserByTelegramId(telegramId);
+  if (!actor) {
+    await ctx.answerCbQuery("❌ 用户不存在", { show_alert: true });
+    return;
+  }
+
+  const rows = await db.select().from(groupsTable).where(eq(groupsTable.id, groupId)).limit(1);
+  const g = rows[0];
+
+  if (!g || g.deletedAt != null) {
+    await ctx.answerCbQuery("❌ 群不存在", { show_alert: true });
+    return;
+  }
+
+  const next = g.isEnabled === 1 ? 0 : 1;
+
+  await db
+    .update(groupsTable)
+    .set({ isEnabled: next })
+    .where(eq(groupsTable.id, groupId));
+
+  invalidateGroupsCache();
+
+  await writeAudit(
+    actor.id,
+    next === 1 ? "GROUP_ENABLE" : "GROUP_DISABLE",
+    "group",
+    groupId,
+    `chatId=${g.tgChatId.toString()} title=${g.title}`,
+    "MEDIUM",
+  );
+
+  await ctx.answerCbQuery(next === 1 ? "✅ 已启用" : "🔕 已禁用");
+  await showGroupsList(ctx, 0);
+}
+
+export async function handleGroupDelete(ctx: Context, groupId: number, telegramId: string): Promise<void> {
+  const actor = await getUserByTelegramId(telegramId);
+  if (!actor) {
+    await ctx.answerCbQuery("❌ 用户不存在", { show_alert: true });
+    return;
+  }
+
+  const rows = await db.select().from(groupsTable).where(eq(groupsTable.id, groupId)).limit(1);
+  const g = rows[0];
+
+  if (!g || g.deletedAt != null) {
+    await ctx.answerCbQuery("❌ 群不存在", { show_alert: true });
+    return;
+  }
+
+  // 防止删了还被项目引用（应用层兜底）
+  const bound = await db
+    .select({ id: projectsTable.id })
+    .from(projectsTable)
+    .where(and(eq(projectsTable.groupId, groupId), notDeleted(projectsTable)))
+    .limit(1);
+
+  if (bound.length > 0) {
+    await ctx.answerCbQuery("⛔ 仍有项目绑定此群，先解绑项目", { show_alert: true });
+    return;
+  }
+
+  await db
+    .update(groupsTable)
+    .set({ deletedAt: new Date(), isEnabled: 0 })
+    .where(eq(groupsTable.id, groupId));
+
+  invalidateGroupsCache();
+
+  await writeAudit(
+    actor.id,
+    "GROUP_DELETE",
+    "group",
+    groupId,
+    `chatId=${g.tgChatId.toString()} title=${g.title}`,
+    "HIGH",
+  );
+
+  await ctx.answerCbQuery("🗑 已删除（软删）", { show_alert: true });
+  await showGroupsList(ctx, 0);
+}
+
+// ───────────────────────────── project binding ─────────────────────────────
+
+export async function showProjectBindList(ctx: Context, offset = 0): Promise<void> {
+  const projs = await db
+    .select()
+    .from(projectsTable)
+    .where(notDeleted(projectsTable))
+    .orderBy(desc(projectsTable.id))
+    .limit(PAGE_SIZE)
+    .offset(offset);
+
+  if (projs.length === 0) {
+    await editOrSend(ctx, `📁 <b>项目绑定</b>\n\n${EMPTY_LIST_MSG}`, [[{ text: "🔙 返回", callback_data: "M:GROUPS" }]]);
+    return;
+  }
+
+  const lines: string[] = [];
+  lines.push("📁 <b>项目绑定</b>");
+  lines.push("");
+  lines.push("选择项目进入绑定页：");
+  lines.push("");
+
+  const buttons: { text: string; callback_data: string }[] = [];
+
+  for (const p of projs) {
+    const mark = p.groupId ? "📡" : "—";
+    lines.push(`${mark} #${p.id} <b>${escapeHtml(p.name)}</b>`);
+    buttons.push({
+      text: `${mark} #${p.id} ${p.name.length > 16 ? p.name.slice(0, 16) + "…" : p.name}`,
+      callback_data: `GROUPS:PROJ:${p.id}`,
+    });
+  }
+
+  await editOrSend(
+    ctx,
+    lines.join("\n"),
+    buildKeyboard(buttons, 1, [
+      { text: "🔙 返回", callback_data: "M:GROUPS" },
+    ]),
+  );
+}
+
+export async function showProjectBindPanel(ctx: Context, projectId: number): Promise<void> {
+  const proj = await db
+    .select()
+    .from(projectsTable)
+    .where(and(eq(projectsTable.id, projectId), notDeleted(projectsTable)))
+    .limit(1);
+
+  const p = proj[0];
+  if (!p) {
+    await ctx.answerCbQuery("❌ 项目不存在", { show_alert: true });
+    return;
+  }
+
+  const groups = await db
+    .select()
+    .from(groupsTable)
+    .where(isNull(groupsTable.deletedAt))
+    .orderBy(desc(groupsTable.id));
+
+  const lines: string[] = [];
+  lines.push(`📁 <b>${escapeHtml(p.name)}</b>`);
+  lines.push("");
+  lines.push(`当前绑定：${p.groupId ? `#${p.groupId}` : "（未绑定）"}`);
+  lines.push("");
+  lines.push("选择要绑定的群：");
+
+  const buttons: { text: string; callback_data: string }[] = [];
+
+  for (const g of groups) {
+    const enabled = g.isEnabled === 1 ? "✅" : "⛔";
+    const selected = p.groupId === g.id ? "📌" : " ";
+    buttons.push({
+      text: `${selected}${enabled} #${g.id} ${g.title}`,
+      callback_data: `GROUPS:BIND:${projectId}:${g.id}`,
+    });
+  }
+
+  if (p.groupId) {
+    buttons.push({
+      text: "🔓 解除绑定",
+      callback_data: `GROUPS:UNBIND:${projectId}`,
+    });
+  }
+
+  await editOrSend(
+    ctx,
+    lines.join("\n"),
+    buildKeyboard(buttons, 1, [
+      { text: "🔙 返回项目列表", callback_data: "GROUPS:PROJ:0" },
+      { text: "🔙 返回群组菜单", callback_data: "M:GROUPS" },
+    ]),
+  );
+}
+
+export async function handleProjectBind(
+  ctx: Context,
+  projectId: number,
+  groupId: number,
+  telegramId: string,
+): Promise<void> {
+  const actor = await getUserByTelegramId(telegramId);
+  if (!actor) {
+    await ctx.answerCbQuery("❌ 用户不存在", { show_alert: true });
+    return;
+  }
+
+  const g = await db.select().from(groupsTable).where(eq(groupsTable.id, groupId)).limit(1);
+  if (!g[0] || g[0].deletedAt != null) {
+    await ctx.answerCbQuery("❌ 群不存在", { show_alert: true });
+    return;
+  }
+
+  await db
+    .update(projectsTable)
+    .set({ groupId })
+    .where(and(eq(projectsTable.id, projectId), notDeleted(projectsTable)));
+
+  invalidateGroupsCache();
+
+  await writeAudit(
+    actor.id,
+    "PROJECT_GROUP_BIND",
+    "project",
+    projectId,
+    `projectId=${projectId} groupId=${groupId}`,
+    "MEDIUM",
+  );
+
+  await ctx.answerCbQuery("✅ 已绑定");
+  await showProjectBindPanel(ctx, projectId);
+}
+
+export async function handleProjectUnbind(
+  ctx: Context,
+  projectId: number,
+  telegramId: string,
+): Promise<void> {
+  const actor = await getUserByTelegramId(telegramId);
+  if (!actor) {
+    await ctx.answerCbQuery("❌ 用户不存在", { show_alert: true });
+    return;
+  }
+
+  await db
+    .update(projectsTable)
+    .set({ groupId: null })
+    .where(and(eq(projectsTable.id, projectId), notDeleted(projectsTable)));
+
+  invalidateGroupsCache();
+
+  await writeAudit(
+    actor.id,
+    "PROJECT_GROUP_UNBIND",
+    "project",
+    projectId,
+    `projectId=${projectId}`,
+    "MEDIUM",
+  );
+
+  await ctx.answerCbQuery("🔓 已解绑");
+  await showProjectBindPanel(ctx, projectId);
+}
+D) index.ts — 加 case "GROUPS"
+
+你在 switch(module) 里加一段（建议放在 case "SET" 之前或之后都行）：
+
+  case "GROUPS": {
+    if (action === "LIST") {
+      await ctx.answerCbQuery();
+      const off = parseInt(idStr ?? "0", 10);
+      const { showGroupsList } = await import("./handlers/groups.js");
+      await showGroupsList(ctx, isNaN(off) ? 0 : Math.max(0, off));
+      break;
+    }
+
+    if (action === "REG") {
+      const { handleGroupRegister } = await import("./handlers/groups.js");
+      await handleGroupRegister(ctx, telegramId);
+      break;
+    }
+
+    if (action === "TOGGLE") {
+      const gid = parseInt(idStr ?? "0", 10);
+      if (!gid) { await ctx.answerCbQuery("❌ 参数错误", { show_alert: true }); break; }
+      const { handleGroupToggle } = await import("./handlers/groups.js");
+      await handleGroupToggle(ctx, gid, telegramId);
+      break;
+    }
+
+    if (action === "DEL") {
+      const gid = parseInt(idStr ?? "0", 10);
+      if (!gid) { await ctx.answerCbQuery("❌ 参数错误", { show_alert: true }); break; }
+      const { handleGroupDelete } = await import("./handlers/groups.js");
+      await handleGroupDelete(ctx, gid, telegramId);
+      break;
+    }
+
+    if (action === "PROJ") {
+      await ctx.answerCbQuery();
+      const pid = parseInt(idStr ?? "0", 10);
+      const { showProjectBindList, showProjectBindPanel } = await import("./handlers/groups.js");
+      if (!pid) await showProjectBindList(ctx, 0);
+      else await showProjectBindPanel(ctx, pid);
+      break;
+    }
+
+    if (action === "BIND") {
+      const pid = parseInt(idStr ?? "0", 10);
+      const gid = parseInt(extra ?? "0", 10);
+      if (!pid || !gid) { await ctx.answerCbQuery("❌ 参数错误", { show_alert: true }); break; }
+      const { handleProjectBind } = await import("./handlers/groups.js");
+      await handleProjectBind(ctx, pid, gid, telegramId);
+      break;
+    }
+
+    if (action === "UNBIND") {
+      const pid = parseInt(idStr ?? "0", 10);
+      if (!pid) { await ctx.answerCbQuery("❌ 参数错误", { show_alert: true }); break; }
+      const { handleProjectUnbind } = await import("./handlers/groups.js");
+      await handleProjectUnbind(ctx, pid, telegramId);
+      break;
+    }
+
+    await ctx.answerCbQuery();
+    const { showGroupsMenu } = await import("./handlers/groups.js");
+    await showGroupsMenu(ctx);
+    break;
+  }
+E) menus.ts / showMenu 不需要动 index.ts 的 M:GROUPS case
+
+你已经有 showMenu(ctx, "M:SET", role) 体系，所以只要上面 case "GROUPS" 存在即可。
+
+F) 你现在就能跑的操作路径（上线验证）
+1）进入系统设置
+
+⚙️ 系统设置 → 📡 群组绑定
+
+2）注册群
+
+在你要绑定的群里点菜单 → ➕ 注册当前群
+
+3）项目绑定
+
+📁 项目绑定 → 选项目 → 绑定群
+
+之后任何 dispatchBroadcast() 都会优先走 ctx.groupId → 查 groups 表路由。
+
+G) 注意一个真实坑（必须提醒你）
+
+你 schema 里：
+
+tgChatId: bigint(...).unique()
+
+这意味着：软删后不能重新注册同一个 chatId，会撞 unique。
+
+我在 delete 里做了“软删”，但没有解决 unique 冲突问题——这是 schema 级问题。
+
+短期策略：不要删，只禁用（disable 就够用了）。
+长期策略：改 partial unique index（P2.1 再做）。

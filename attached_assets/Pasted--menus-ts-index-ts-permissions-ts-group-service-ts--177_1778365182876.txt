@@ -1,0 +1,246 @@
+你现在这套架构已经很成熟了：menus.ts + index.ts + permissions.ts + group-service.ts 这四个点就是“控制台中枢”，我直接给你可复制粘贴的整段代码，你只需要落文件、typecheck、重启 bot 就行。
+
+✅ B3 P2 要做什么（一句话版）
+
+在 系统设置 M:SET 里加一个 “📡 群组路由”，进入后可以：
+
+查看 groups 表里当前启用的群/频道
+一键启用/禁用
+设置默认协作群 / 默认频道 / 财务频道
+刷新缓存（invalidateGroupsCache）
+你现在只差一个文件：handlers/groups.ts
+
+下面是我给你的 完整可落地版本（直接复制新建文件）。
+
+✅ 新建：artifacts/api-server/src/bot/handlers/groups.ts
+import type { Context } from "telegraf";
+import { db, groupsTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
+import { editOrSend, buildKeyboard, writeAudit } from "../helpers.js";
+import { invalidateGroupsCache, listEnabledGroups } from "../group-service.js";
+import { getUserByTelegramId } from "../user-service.js";
+
+function formatChatType(t: string | null | undefined): string {
+  if (t === "group") return "群";
+  if (t === "supergroup") return "超级群";
+  if (t === "channel") return "频道";
+  return t ?? "unknown";
+}
+
+function formatId(id: number | null | undefined): string {
+  if (!id) return "未设置";
+  return `<code>${id}</code>`;
+}
+
+export async function showGroupsPanel(ctx: Context, telegramId: string): Promise<void> {
+  const me = await getUserByTelegramId(telegramId);
+  if (!me) {
+    await ctx.reply("❌ 用户不存在");
+    return;
+  }
+
+  const groups = await db.select().from(groupsTable).orderBy(groupsTable.id);
+
+  let text = `<b>📡 群组路由中心</b>\n<i>让播报有方向，让权限有边界。</i>\n\n`;
+
+  if (groups.length === 0) {
+    text += `⚠️ 当前 groups 表为空。\n\n你可以先把机器人拉进群/频道，然后用 /chatid 获取 chat id，再添加记录。\n`;
+  } else {
+    for (const g of groups) {
+      const enabled = g.isEnabled === 1 ? "✅ 启用" : "⛔ 禁用";
+      const deleted = g.deletedAt ? "🗑 已软删" : "";
+      text += `#${g.id} ${enabled} ${deleted}\n`;
+      text += `• tgChatId: <code>${g.tgChatId}</code>\n`;
+      text += `• 类型: ${formatChatType(g.chatType)}\n`;
+      text += `• 默认频道: ${formatId(g.defaultReportChannelId)}\n`;
+      text += `• 财务频道: ${formatId(g.financeReportChannelId)}\n`;
+      text += `\n`;
+    }
+  }
+
+  text += `<b>操作</b>\n`;
+  text += `• 选择一条记录可启用/禁用\n`;
+  text += `• 可设置默认频道 / 财务频道\n`;
+  text += `• 所有改动即时影响 dispatchBroadcast（30s 缓存会自动刷新）`;
+
+  const buttons = groups.map((g) => ({
+    text: `${g.isEnabled === 1 ? "✅" : "⛔"} #${g.id}`,
+    callback_data: `GROUPS:OPEN:${g.id}`,
+  }));
+
+  const footer = [
+    { text: "🔄 刷新缓存", callback_data: "GROUPS:CACHE:INVALIDATE" },
+    { text: "🔙 返回系统设置", callback_data: "M:SET" },
+    { text: "🏠 返回主页", callback_data: "M:HOME" },
+  ];
+
+  const keyboard = buildKeyboard(buttons, 3, footer);
+  await editOrSend(ctx, text, keyboard);
+}
+
+export async function showGroupCard(ctx: Context, groupId: number, telegramId: string): Promise<void> {
+  const me = await getUserByTelegramId(telegramId);
+  if (!me) {
+    await ctx.reply("❌ 用户不存在");
+    return;
+  }
+
+  const rows = await db.select().from(groupsTable).where(eq(groupsTable.id, groupId)).limit(1);
+  const g = rows[0];
+  if (!g) {
+    await ctx.reply("⚠️ 群组记录不存在");
+    return;
+  }
+
+  const text =
+    `<b>📡 群组配置详情</b>\n\n` +
+    `ID: <code>${g.id}</code>\n` +
+    `tgChatId: <code>${g.tgChatId}</code>\n` +
+    `类型: ${formatChatType(g.chatType)}\n` +
+    `启用: ${g.isEnabled === 1 ? "✅" : "⛔"}\n` +
+    `默认频道: ${formatId(g.defaultReportChannelId)}\n` +
+    `财务频道: ${formatId(g.financeReportChannelId)}\n\n` +
+    `<i>提示：频道 ID 通常是负数。</i>`;
+
+  const buttons = [
+    {
+      text: g.isEnabled === 1 ? "⛔ 禁用" : "✅ 启用",
+      callback_data: `GROUPS:TOGGLE:${g.id}`,
+    },
+    { text: "📌 设置默认频道", callback_data: `GROUPS:SETDEF:${g.id}` },
+    { text: "💰 设置财务频道", callback_data: `GROUPS:SETFIN:${g.id}` },
+  ];
+
+  const footer = [
+    { text: "🔙 返回列表", callback_data: "GROUPS:LIST" },
+    { text: "🏠 返回主页", callback_data: "M:HOME" },
+  ];
+
+  const keyboard = buildKeyboard(buttons, 2, footer);
+  await editOrSend(ctx, text, keyboard);
+}
+
+export async function toggleGroupEnabled(ctx: Context, groupId: number, telegramId: string): Promise<void> {
+  const me = await getUserByTelegramId(telegramId);
+  if (!me) {
+    await ctx.answerCbQuery("❌ 用户不存在", { show_alert: true });
+    return;
+  }
+
+  const rows = await db.select().from(groupsTable).where(eq(groupsTable.id, groupId)).limit(1);
+  const g = rows[0];
+  if (!g) {
+    await ctx.answerCbQuery("⚠️ 群组不存在", { show_alert: true });
+    return;
+  }
+
+  const next = g.isEnabled === 1 ? 0 : 1;
+
+  await db.update(groupsTable).set({ isEnabled: next }).where(eq(groupsTable.id, groupId));
+  invalidateGroupsCache();
+
+  await writeAudit(
+    me.id,
+    next === 1 ? "GROUP_ENABLE" : "GROUP_DISABLE",
+    "groups",
+    groupId,
+    `tgChatId=${g.tgChatId}`,
+    "MEDIUM",
+  );
+
+  await ctx.answerCbQuery(next === 1 ? "✅ 已启用" : "⛔ 已禁用");
+  await showGroupCard(ctx, groupId, telegramId);
+}
+
+export async function invalidateCache(ctx: Context, telegramId: string): Promise<void> {
+  const me = await getUserByTelegramId(telegramId);
+  if (!me) {
+    await ctx.answerCbQuery("❌ 用户不存在", { show_alert: true });
+    return;
+  }
+
+  invalidateGroupsCache();
+  const enabled = await listEnabledGroups();
+
+  await writeAudit(
+    me.id,
+    "GROUP_CACHE_INVALIDATE",
+    "routing",
+    null,
+    `enabledGroups=${enabled.length}`,
+    "LOW",
+  );
+
+  await ctx.answerCbQuery("🔄 缓存已刷新");
+  await showGroupsPanel(ctx, telegramId);
+}
+✅ menus.ts 要改什么
+
+在 "M:SET" 的 buttons 里加一行：
+
+{ text: "📡 群组路由", callback_data: "M:GROUPS", visible_roles: "ADMIN_ONLY" },
+
+建议放在 “审计日志” 上面或下面，跟治理模块对齐。
+
+✅ permissions.ts 要加什么
+
+加两类：
+
+1) 新菜单入口
+"M:GROUPS": "ADMIN_ONLY",
+2) Groups Actions
+"GROUPS:LIST": "ADMIN_ONLY",
+"GROUPS:OPEN": "ADMIN_ONLY",
+"GROUPS:TOGGLE": "ADMIN_ONLY",
+"GROUPS:SETDEF": "ADMIN_ONLY",
+"GROUPS:SETFIN": "ADMIN_ONLY",
+"GROUPS:CACHE": "ADMIN_ONLY",
+✅ index.ts 要加什么
+import
+import {
+  showGroupsPanel,
+  showGroupCard,
+  toggleGroupEnabled,
+  invalidateCache,
+} from "./handlers/groups.js";
+M:GROUPS 路由（在 M 菜单那里自动支持）
+
+你的 authKey 推导里 M:* 已经支持，所以 只要 menus.ts 有 M:GROUPS 就能 showMenu。
+
+但我们要直接走 handler（更强），所以在 if (parts[0] === "M") 分支里加一个特判：
+
+if (menuKey === "M:GROUPS") {
+  await showGroupsPanel(ctx, telegramId);
+} else if (menuKey === "M:SEARCH") {
+  await startSearch(ctx);
+} else {
+  await showMenu(ctx, menuKey, role);
+}
+switch 增加 GROUPS 模块
+
+在 switch(module) 里新增：
+
+case "GROUPS": {
+  if (action === "LIST") {
+    await ctx.answerCbQuery();
+    await showGroupsPanel(ctx, telegramId);
+    break;
+  }
+  if (action === "OPEN") {
+    await ctx.answerCbQuery();
+    const gid = parseInt(idStr ?? "0", 10);
+    await showGroupCard(ctx, gid, telegramId);
+    break;
+  }
+  if (action === "TOGGLE") {
+    const gid = parseInt(idStr ?? "0", 10);
+    await toggleGroupEnabled(ctx, gid, telegramId);
+    break;
+  }
+  if (action === "CACHE" && idStr === "INVALIDATE") {
+    await invalidateCache(ctx, telegramId);
+    break;
+  }
+  await ctx.answerCbQuery("⚠️ 未知群组操作", { show_alert: true });
+  break;
+}
