@@ -33,7 +33,7 @@ import {
   startDocAddFlow, startDocTagsFlow, startDocPurgeFlow,
 } from "./handlers/documents.js";
 // BI handlers all migrated to routes/bi.ts (lazy-imported there).
-import { runMemberSearch } from "./handlers/members.js";
+import { runMemberSearch, showMemberList } from "./handlers/members.js";
 import {
   showAuditLog, showReminderPolicy, handleReminderEdit,
   showExportPanel, handleExport, showTagSystem, showBackupPanel,
@@ -285,6 +285,20 @@ async function routeCallback(ctx: any, data: string, role: Role, telegramId: str
 
   if (parts[0] === "SELECT") {
     await ctx.answerCbQuery("✅ 已选择");
+    return;
+  }
+
+
+  // Hard route for member list — avoids MEM catch-all fallback.
+  if (data === "MEM:LIST" || data.startsWith("MEM:LIST:")) {
+    if (!canExecuteAction(role, "MEM:LIST")) {
+      await ctx.answerCbQuery("⛔ 你没有权限查看成员列表", { show_alert: true });
+      return;
+    }
+    const filter = parts[2] || "ALL";
+    const off = parseInt(parts[3] || "0", 10);
+    await ctx.answerCbQuery();
+    await showMemberList(ctx, filter, isNaN(off) ? 0 : Math.max(0, off));
     return;
   }
 
