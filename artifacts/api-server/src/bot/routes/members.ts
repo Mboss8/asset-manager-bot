@@ -195,4 +195,111 @@ export const MEMBERS_ROUTES: Route[] = [
   { pattern: "MEM:<_action>", acl: "M:MEM", handler: fallbackToMenu },
   { pattern: "MEM:<_action>:<_arg?>", acl: "M:MEM", handler: fallbackToMenu },
   { pattern: "MEM:<_action>:<_a>:<_b?>", acl: "M:MEM", handler: fallbackToMenu },
+
+
+  // =========================
+  // Role buttons
+  // =========================
+
+  {
+    pattern: "MEM:SETROLE:<id:int>:ADMIN",
+    acl: "MEM:SETROLE",
+    preAck: false,
+    handler: async (rctx) => {
+      const actor = await loadActor(rctx);
+      if (!actor) return;
+
+      const { handleMemberAction } = await import("../handlers/members.js");
+
+      await handleMemberAction(
+        rctx.ctx,
+        "SETROLE",
+        parseInt(rctx.args.id, 10),
+        "ADMIN",
+        actor,
+      );
+    },
+  },
+
+  {
+    pattern: "MEM:SETROLE:<id:int>:PM",
+    acl: "MEM:SETROLE",
+    preAck: false,
+    handler: async (rctx) => {
+      const actor = await loadActor(rctx);
+      if (!actor) return;
+
+      const { handleMemberAction } = await import("../handlers/members.js");
+
+      await handleMemberAction(
+        rctx.ctx,
+        "SETROLE",
+        parseInt(rctx.args.id, 10),
+        "PM",
+        actor,
+      );
+    },
+  },
+
+  {
+    pattern: "MEM:SETROLE:<id:int>:FINANCE",
+    acl: "MEM:SETROLE",
+    preAck: false,
+    handler: async (rctx) => {
+      const actor = await loadActor(rctx);
+      if (!actor) return;
+
+      const { handleMemberAction } = await import("../handlers/members.js");
+
+      await handleMemberAction(
+        rctx.ctx,
+        "SETROLE",
+        parseInt(rctx.args.id, 10),
+        "FINANCE",
+        actor,
+      );
+    },
+  },
+
+  {
+    pattern: "MEM:SETROLE:<id:int>:MEMBER",
+    acl: "MEM:SETROLE",
+    preAck: false,
+    handler: async (rctx) => {
+      const actor = await loadActor(rctx);
+      if (!actor) return;
+
+      const { handleMemberAction } = await import("../handlers/members.js");
+
+      await handleMemberAction(
+        rctx.ctx,
+        "SETROLE",
+        parseInt(rctx.args.id, 10),
+        "MEMBER",
+        actor,
+      );
+    },
+  },
+
+  {
+    pattern: "MEM:SETROLE:<id:int>:GUEST",
+    acl: "MEM:SETROLE",
+    preAck: false,
+    handler: async (rctx) => {
+      const actor = await loadActor(rctx);
+      if (!actor) return;
+
+      const { handleMemberAction } = await import("../handlers/members.js");
+
+      await handleMemberAction(
+        rctx.ctx,
+        "SETROLE",
+        parseInt(rctx.args.id, 10),
+        "GUEST",
+        actor,
+      );
+    },
+  },
+
+
 ];
