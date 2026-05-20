@@ -139,8 +139,32 @@ async function startBot(bot: Telegraf, webhook: WebhookConfig | null): Promise<v
     logger.warn({ err }, "Failed to delete existing webhook before polling startup");
   }
 
-  await bot.launch({ allowedUpdates: [...ALLOWED_UPDATES] }, () => {
-    logger.info("Telegram bot started (long polling)");
+  
+  if (!process.env.TELEGRAM_WEBHOOK_URL) {
+    throw new Error("TELEGRAM_WEBHOOK_URL is required in production");
+  }
+
+  const webhookPath =
+    process.env.TELEGRAM_WEBHOOK_PATH || "/telegram/webhook";
+
+  const webhookUrl =
+    process.env.TELEGRAM_WEBHOOK_URL.replace(/\/$/, "") + webhookPath;
+
+  await bot.telegram.deleteWebhook({
+    drop_pending_updates: false,
+  });
+
+  await bot.telegram.setWebhook(webhookUrl);
+
+  app.use(bot.webhookCallback(webhookPath));
+
+  logger.info(
+    {
+      webhookUrl,
+      webhookPath,
+    },
+    "Telegram bot started (webhook mode)",
+  );
     void startScheduler(bot);
   });
 }
