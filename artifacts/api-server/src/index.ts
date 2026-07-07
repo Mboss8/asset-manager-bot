@@ -5,6 +5,7 @@ import app from "./app.js";
 import { logger } from "./lib/logger.js";
 import { createBot } from "./bot/index.js";
 import { startReminderScheduler } from "./bot/reminders.js";
+import { redisService, webhookDedupService } from "./redis/index.js";
 
 const ALLOWED_UPDATES = ["message", "callback_query", "my_chat_member"] as const;
 const DEFAULT_WEBHOOK_PATH = "/telegram/webhook";
@@ -139,7 +140,6 @@ async function startBot(bot: Telegraf, webhook: WebhookConfig | null): Promise<v
     logger.warn({ err }, "Failed to delete existing webhook before polling startup");
   }
 
-  
   if (!process.env.TELEGRAM_WEBHOOK_URL) {
     throw new Error("TELEGRAM_WEBHOOK_URL is required in production");
   }
@@ -176,7 +176,7 @@ function stopServer(server: Server, signal: "SIGINT" | "SIGTERM"): void {
       logger.error({ err }, "Error while closing HTTP server");
       process.exit(1);
     }
-    process.exit(0);
+    void redisService.close().finally(() => process.exit(0));
   });
 }
 
@@ -196,6 +196,22 @@ if (bot && webhook) {
   // Register at app root so Telegraf can match the original request URL.
   // Non-webhook requests fall through to the rest of Express via next().
   app.use((req, res, next) => {
+    const updateId = (req.body as { update_id?: unknown } | undefined)?.update_id;
+    if (req.method === "POST" && req.path === webhook.path && (typeof updateId === "number" || typeof updateId === "string")) {
+      void webhookDedupService
+        .mark(updateId)
+        .then(({ duplicate, degraded }) => {
+          if (duplicate) {
+            logger.info({ updateId, degraded }, "Duplicate Telegram webhook update ignored");
+            res.json({ ok: true, duplicate: true });
+            return;
+          }
+          void webhookCallback(req, res, next).catch(next);
+        })
+        .catch(next);
+      return;
+    }
+
     void webhookCallback(req, res, next).catch(next);
   });
 }
