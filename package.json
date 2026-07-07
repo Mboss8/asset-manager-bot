@@ -7,6 +7,9 @@
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
+    "redis:up": "docker compose up -d redis",
+    "redis:wait": "node scripts/src/wait-redis.mjs",
+    "infra:up": "docker compose up -d postgres redis",
     "koyeb-build": "corepack enable && corepack prepare pnpm@9.15.9 --activate && pnpm install --no-frozen-lockfile && pnpm --filter @workspace/api-server run build",
     "start": "pnpm --filter @workspace/api-server start"
   },
