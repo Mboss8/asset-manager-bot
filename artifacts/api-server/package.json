@@ -17,6 +17,7 @@
     "drizzle-orm": "catalog:",
     "express": "^5",
     "grammy": "^1.42.0",
+    "ioredis": "^5.8.2",
     "node-cron": "^4.2.1",
     "pino": "^9",
     "pino-http": "^10",
