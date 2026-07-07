@@ -2,11 +2,14 @@ import type { Telegram } from "telegraf";
 import { db, tasksTable, usersTable, requirementsTable, financeRecordsTable, notDeleted } from "@workspace/db";
 import { and, eq, lt, isNotNull, inArray } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
+import { redisLockService } from "../redis/index.js";
 import { dispatchBroadcast } from "./dispatch.js";
 import { escapeHtml, notifyUser, REVIEWER_ROLES_REQ, REVIEWER_ROLES_FIN } from "./notify.js";
 import { getSettings, getLastDigestAutoDate, setLastDigestAutoDate } from "./settings-store.js";
 
 const ACTIVE_STATUSES = ["TODO", "DOING", "PAUSED", "VERIFY"];
+const DIGEST_LOCK_NAME = "scheduler:daily-digest";
+const DIGEST_LOCK_TTL_SECONDS = 20 * 60;
 
 function startOfTomorrow(): Date {
   const d = new Date();
@@ -294,6 +297,17 @@ export async function sendDailyDigest(tg: Telegram, opts: { auto?: boolean } = {
   }
 }
 
+async function sendDailyDigestWithSchedulerLock(tg: Telegram, reason: string): Promise<void> {
+  const result = await redisLockService.withLock(DIGEST_LOCK_NAME, DIGEST_LOCK_TTL_SECONDS, async () => {
+    await sendDailyDigest(tg, { auto: true });
+    return true;
+  });
+
+  if (!result) {
+    logger.info({ reason }, "Daily digest scheduler lock already held — skipping this tick");
+  }
+}
+
 async function msUntilNextRun(): Promise<number> {
   const s = await getSettings();
   const now = new Date();
@@ -324,7 +338,7 @@ export async function startReminderScheduler(tg: Telegram): Promise<void> {
   // Re-evaluate the schedule on every tick so live edits to digest_hour/minute
   // are picked up the very next cycle without a process restart.
   const tick = async (): Promise<void> => {
-    await sendDailyDigest(tg, { auto: true });
+    await sendDailyDigestWithSchedulerLock(tg, "scheduled_tick");
     const delay = await msUntilNextRun();
     setTimeout(() => void tick(), delay);
   };
@@ -342,7 +356,7 @@ export async function startReminderScheduler(tg: Telegram): Promise<void> {
   );
   if (await shouldCatchUpOnStartup()) {
     logger.info("Restarted shortly after scheduled digest time — running catch-up now");
-    setTimeout(() => void sendDailyDigest(tg, { auto: true }), 5_000);
+    setTimeout(() => void sendDailyDigestWithSchedulerLock(tg, "startup_catchup"), 5_000);
   }
   setTimeout(() => void tick(), initialDelay);
 }
